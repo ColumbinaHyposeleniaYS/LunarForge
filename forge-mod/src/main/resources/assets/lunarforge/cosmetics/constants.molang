@@ -1,0 +1,185 @@
+c.pi = 3.14159265359;
+
+c.in_special_env = q.is_flying || q.is_swimming || q.is_in_water;
+
+c.delta = math.abs(q.life_time - c.last_frame);
+c.last_frame = q.life_time;
+
+c.current_tick = math.floor(q.life_time * 20);
+if (c.last_tick != c.current_tick) {
+   c.tick_random = math.random(0, 1);
+}
+if (c.last_tick != c.current_tick) {
+   c.tick_random_int = lunar.random_integer(0, 100000);
+}
+
+c.last_tick = c.current_tick;
+
+c.abs_groundspeed = math.abs(query.local_z_velocity);
+c.leg_ampl = math.min(c.abs_groundspeed,4)*15;
+c.afk_timer = (!q.ground_speed && !q.y_velocity) ? c.afk_timer + (1 * c.delta) : 0;
+readout.afk_timer = c.afk_timer;
+
+c.normalized_ground_speed = math.clamp(c.ground_speed_smoothed, 0, 6) / 6;
+c.highspeed = (c.ground_speed_smoothed > 8);
+
+c.tmul = 80;
+c.ftmul = 256;
+
+c.is_crouching_smoothed ?? q.is_crouching;
+c.is_crouching_smoothed = math.lerp(c.is_crouching_smoothed, q.is_crouching, 0.05);
+
+c.head_y_rotation_diff = c.last_head_y_rotation - q.head_y_rotation;
+c.head_x_rotation_diff = c.last_head_x_rotation - q.head_x_rotation;
+c.last_head_y_rotation = q.head_y_rotation;
+c.last_head_x_rotation = q.head_x_rotation;
+
+c.eye_look_x_position_offset = c.eye_look_x_position_offset + (c.head_y_rotation_diff / 45);
+c.eye_look_x_position_offset = c.eye_look_x_position_offset * 0.85;
+
+c.eye_look_y_position_offset = c.eye_look_y_position_offset + (c.head_x_rotation_diff / 45);
+c.eye_look_y_position_offset = c.eye_look_y_position_offset * 0.85;
+
+c.distance_moved ?? 0;
+c.distance_moved = c.distance_moved + (math.abs(q.ground_speed) * c.delta);
+
+c.ground_speed_smoothed ?? q.ground_speed;
+c.ground_speed_smoothed = math.lerp(c.ground_speed_smoothed, q.ground_speed, 0.5);
+
+c.is_moving = (q.ground_speed > 0.25);
+c.is_moving_smoothed = (
+   (q.ground_speed < 0.25)
+      ? math.lerp(c.is_moving_smoothed ?? 0, 0, 0.1)
+      : math.lerp(c.is_moving_smoothed ?? 0, 1, 0.1)
+);
+
+c.is_walking_smoothed = (
+   (q.ground_speed < 2.85)
+      ? math.lerp(c.is_walking_smoothed ?? 0, 0, 0.1)
+      : math.lerp(c.is_walking_smoothed ?? 0, 1, 0.1)
+);
+
+c.is_swimming_smoothed = (
+   q.is_swimming
+      ? math.lerp(c.is_swimming_smoothed ?? 0, 1, 0.1)
+      : math.lerp(c.is_swimming_smoothed ?? 0, 0, 0.1)
+);
+c.is_running_smoothed = (
+   q.is_running
+      ? math.lerp(c.is_running_smoothed ?? 0, 1, 0.1)
+      : math.lerp(c.is_running_smoothed ?? 0, 0, 0.1)
+);
+c.is_flying_smoothed = (
+   q.is_flying
+      ? math.lerp(c.is_flying_smoothed ?? 0, 1, 0.1)
+      : math.lerp(c.is_flying_smoothed ?? 0, 0, 0.1)
+);
+c.is_crouching_smoothed = (
+   q.is_crouching
+      ? math.lerp(c.is_crouching_smoothed ?? 0, 1, 0.1)
+      : math.lerp(c.is_crouching_smoothed ?? 0, 0, 0.1)
+);
+
+c.is_moving_backwards = (q.local_z_velocity < -1);
+
+c.is_moving_backwards_smoothed = (
+   (q.local_z_velocity < -1)
+      ? math.lerp(c.is_moving_backwards_smoothed ?? 0, 1, 0.08)
+      : math.lerp(c.is_moving_backwards_smoothed ?? 0, 0, 0.08)
+);
+
+c.is_deep_underwater_smoothed = (
+   (q.distance_from_surface > 2)
+      ? math.lerp(c.is_deep_underwater_smoothed ?? 0, 1, 0.08)
+      : math.lerp(c.is_deep_underwater_smoothed ?? 0, 0, 0.08)
+);
+
+c.is_submerged_smoothed = (
+   (q.distance_from_surface > 1)
+      ? math.lerp(c.is_submerged_smoothed ?? 0, 1, 0.08)
+      : math.lerp(c.is_submerged_smoothed ?? 0, 0, 0.08)
+);
+
+c.distance_from_surface_smoothed ?? q.distance_from_surface;
+c.distance_from_surface_smoothed = math.lerp(c.distance_from_surface_smoothed, q.distance_from_surface, 0.25);
+
+c.local_x_velocity_smoothed ?? q.local_x_velocity;
+c.local_x_velocity_smoothed = math.lerp(c.local_x_velocity_smoothed, q.local_x_velocity, 0.25);
+c.lvs_x = c.local_x_velocity_smoothed;
+
+c.local_y_velocity_smoothed ?? q.local_y_velocity;
+c.local_y_velocity_smoothed = math.lerp(c.local_y_velocity_smoothed, q.local_y_velocity, 0.25);
+c.lvs_y = c.local_y_velocity_smoothed;
+
+c.local_z_velocity_smoothed ?? q.local_z_velocity;
+c.local_z_velocity_smoothed = math.lerp(c.local_z_velocity_smoothed, q.local_z_velocity, 0.25);
+c.lvs_z = c.local_z_velocity_smoothed;
+
+c.local_x_velocity_smoothed4 ?? q.local_x_velocity;
+c.local_x_velocity_smoothed4 = math.lerp(c.local_x_velocity_smoothed4, q.local_x_velocity, 0.125);
+
+c.local_y_velocity_smoothed4 ?? q.local_y_velocity;
+c.local_y_velocity_smoothed4 = math.lerp(c.local_y_velocity_smoothed4, q.local_y_velocity, 0.125);
+
+c.local_z_velocity_smoothed4 ?? q.local_z_velocity;
+c.local_z_velocity_smoothed4 = math.lerp(c.local_z_velocity_smoothed4, q.local_z_velocity, 0.125);
+
+c.x_velocity_smoothed ?? q.x_velocity;
+c.x_velocity_smoothed = math.lerp(c.x_velocity_smoothed, q.x_velocity, 0.125);
+
+c.y_velocity_smoothed ?? q.y_velocity;
+c.y_velocity_smoothed = math.lerp(c.y_velocity_smoothed, q.y_velocity, 0.125);
+
+c.z_velocity_smoothed ?? q.z_velocity;
+c.z_velocity_smoothed = math.lerp(c.z_velocity_smoothed, q.z_velocity, 0.125);
+
+c.movement_speed_smoothed = math.sqrt(
+   math.pow(c.local_x_velocity_smoothed, 2)
+   + math.pow(c.local_y_velocity_smoothed, 2)
+   + math.pow(c.local_z_velocity_smoothed, 2)
+);
+
+c.entity_y_rotation_smoothed ?? q.entity_y_rotation;
+c.entity_y_rotation_smoothed = math.lerp(c.entity_y_rotation_smoothed, q.entity_y_rotation, 0.05);
+
+c.entity_y_rotation_smoothed_diff = c.entity_y_rotation_smoothed - q.entity_y_rotation;
+c.entity_y_rotation_smoothed_diff_smoothed ?? c.entity_y_rotation_smoothed_diff;
+c.entity_y_rotation_smoothed_diff_smoothed = math.lerp(c.entity_y_rotation_smoothed_diff_smoothed, c.entity_y_rotation_smoothed_diff, 0.05);
+
+c.nutcracker_anim_speed = (c.ground_speed_smoothed < 0.25) ? (256 + 128) : 90;
+
+c.toggle1 = (c.toggle1 ?? 0);
+c.toggle2 = (c.toggle2 ?? 0);
+c.toggle3 = (c.toggle3 ?? 0);
+c.toggle4 = (c.toggle4 ?? 0);
+
+c.timer1 = (c.timer1 ?? 0);
+if (c.timer1 > 0) {c.timer1 = math.max(c.timer1 - c.delta, 0);}
+c.timer2 = (c.timer2 ?? 0);
+if (c.timer2 > 0) {c.timer2 = math.max(c.timer2 - c.delta, 0);}
+
+c.smooth1 = c.smooth1 ?? 0;
+c.smooth1_target = c.smooth1_target ?? 0;
+
+c.last_tick_step_tick = c.tick_step_tick;
+c.tick_step_tick = math.round(q.life_time * 20 - 0.5);
+
+(c.tick_step_tick != c.last_tick_step_tick) ? {
+   c.tick_step10 = c.tick_step9;
+   c.tick_step9 = c.tick_step8;
+   c.tick_step8 = c.tick_step7;
+   c.tick_step7 = c.tick_step6;
+   c.tick_step6 = c.tick_step5;
+   c.tick_step5 = c.tick_step4;
+   c.tick_step4 = c.tick_step3;
+   c.tick_step3 = c.tick_step2;
+   c.tick_step2 = c.tick_step1;
+   c.tick_step1 = c.tick_step0;
+   c.tick_step0 = c.tick_step_value;
+} : 0;
+
+c.second_delta = math.mod(q.life_time, 1);
+c.tick_delta = math.mod(q.life_time * 20, 1);
+
+c.actual_velocity = math.sqrt(q.x_velocity * q.x_velocity + q.y_velocity * q.y_velocity + q.z_velocity * q.z_velocity);
+c.actual_local_velocity = math.sqrt(q.local_x_velocity * q.local_x_velocity + q.local_y_velocity * q.local_y_velocity + q.local_z_velocity * q.local_z_velocity);

@@ -1,0 +1,47 @@
+name: Build Forge mod
+
+on:
+  push:
+    branches: [master]
+    paths: ["forge-mod/**", ".github/workflows/build-forge-mod.yml"]
+  pull_request:
+    paths: ["forge-mod/**", ".github/workflows/build-forge-mod.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: forge-mod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: forge-mod-gradle-${{ hashFiles('forge-mod/build.gradle', 'forge-mod/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: forge-mod-gradle-
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          for attempt in 1 2 3; do
+            ./gradlew setupCIWorkspace build --stacktrace && exit 0
+            echo "Build attempt $attempt failed; retrying"
+            sleep 10
+          done
+          exit 1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          path: forge-mod/build/libs/*.jar
+          archive: false
+          if-no-files-found: error

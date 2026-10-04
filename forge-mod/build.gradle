@@ -1,0 +1,73 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            name = "forge"
+            url = "https://maven.minecraftforge.net"
+        }
+    }
+    dependencies {
+        classpath "net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT"
+    }
+}
+
+apply plugin: "net.minecraftforge.gradle.forge"
+
+version = mod_version
+group = mod_group
+archivesBaseName = mod_id
+
+sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+
+tasks.withType(JavaCompile) { options.encoding = "UTF-8" }
+
+minecraft {
+    version = "1.8.9-11.15.1.2318-1.8.9"
+    runDir = "run"
+    mappings = "stable_20"
+    clientJvmArgs += "-Dfml.coreMods.load=com.example.lunarforge.core.LunarForgeCorePlugin"
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    embed
+    compile.extendsFrom embed
+}
+
+dependencies {
+    embed "com.twelvemonkeys.imageio:imageio-webp:3.15.2"
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mcversion", minecraft_version
+
+    from(sourceSets.main.resources.srcDirs) {
+        include "mcmod.info"
+        expand "version": project.version, "mcversion": minecraft_version
+    }
+
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "mcmod.info"
+    }
+}
+
+jar {
+    from({ configurations.embed.collect { it.isDirectory() ? it : zipTree(it) } }) {
+        exclude "META-INF/**"
+    }
+    manifest {
+        attributes(
+            "Specification-Title": mod_name,
+            "Specification-Version": project.version,
+            "Implementation-Title": project.name,
+            "Implementation-Version": project.version,
+            "FMLCorePlugin": "com.example.lunarforge.core.LunarForgeCorePlugin",
+            "FMLCorePluginContainsFMLMod": "true"
+        )
+    }
+}
+sourceJar.enabled = false

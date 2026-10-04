@@ -1,0 +1,214 @@
+lunar.cos(a.wavelength, a.amplitude, a.delay): |-
+   return math.cos(a.delay + query.life_time * a.wavelength) * a.amplitude;
+
+lunar.sin(a.wavelength, a.amplitude, a.delay): |-
+   return math.sin(a.delay + query.life_time * a.wavelength) * a.amplitude;
+
+lunar.swim_x_stabilize(): |-
+   return query.is_swimming * -90;
+
+lunar.is_jumping(): |-
+   return query.y_velocity > 3;
+
+lunar.check_for_groundspeed(a.threshold): |-
+   return q.ground_speed_smoothed >= a.threshold;
+
+lunar.adapt_freq(a.delay, a.wavelength): |-
+   return math.sin(a.delay + a.wavelength * query.life_time - math.sin(q.ground_speed_smoothed));
+
+lunar.adapt_ampl(a.max_ground_speed_value, a.amplitude): |-
+   return math.min(q.ground_speed_smoothed, a.max_ground_speed_value) * a.amplitude;
+
+lunar.speed_adapt_sin(a.delay, a.wavelength, a.max_ground_speed_value, a.amplitude): |-
+   return (lunar.adapt_freq(a.delay, a.wavelength)) * (lunar.adapt_ampl(a.max_ground_speed_value, a.amplitude));
+
+lunar.sinw(a.frq, a.amp): |-
+   return math.sin(q.life_time * a.frq) * a.amp;
+
+lunar.cosw(a.frq, a.amp): |-
+   return math.cos(q.life_time * a.frq) * a.amp;
+
+lunar.movewave_sin(a.freq, a.amp, a.offset): |-
+   return math.sin(c.distance_moved * a.freq + a.offset) * c.normalized_ground_speed * a.amp;
+
+lunar.movewave_cos(a.freq, a.amp, a.offset): |-
+   return math.cos(c.distance_moved * a.freq + a.offset) * c.normalized_ground_speed * a.amp;
+
+lunar.movewave(a.freq, a.amp, a.offset): |-
+   return math.cos(c.distance_moved * a.freq + a.offset) * 20 * c.normalized_ground_speed * a.amp;
+
+lunar.speed_vibration(a.mag): |-
+   return math.random(c.movement_speed_smoothed * -a.mag, c.movement_speed_smoothed * a.mag);
+
+lunar.sigmoid(a.val, a.range, a.coef): |-
+   return (a.range * 2) / (1 + math.pow(a.coef, -a.val)) - a.range;
+
+lunar.highfalloff(a.val, a.start, a.coef): |-
+   return math.clamp(math.exp((a.val - a.start) * -1 * a.coef), 0, 1);
+
+lunar.smoothmin(a.a, a.b, a.k): |-
+   v.h = math.clamp(0.5 + (0.5 * (a.a - a.b) / a.k), 0, 1);
+   return math.lerp(a.a, a.b, v.h) - (a.k * v.h * (1 - v.h));
+
+lunar.smoothclamp(a.v, a.min, a.max, a.k): |-
+   return lunar.smoothmin(lunar.smoothmin(a.v, a.min, -a.k), a.max, a.k);
+
+lunar.random_integer(a.min, a.max): |-
+   return math.round(math.random(a.min, a.max));
+
+lunar.interval(a.interval, a.duration): |-
+   return math.floor(q.life_time / a.interval) - math.floor((q.life_time - a.duration) / a.interval);
+
+lunar.lopsided_wave(a.value, a.lopside_mag): |-
+   return math.sin(a.value + math.cos(a.value) * a.lopside_mag);
+
+lunar.set_tick_step_value(a.value): |-
+   return c.tick_step_value = a.value;
+
+lunar.easeinsine(a.progress): |-
+   return 1 - math.cos((a.progress * 180) / 2);
+
+lunar.easeoutsine(a.progress): |-
+   return math.sin((a.progress * 180) / 2);
+
+lunar.easeinoutsine(a.progress): |-
+   return(math.cos(180 * a.progress) - 1) * -1 / 2;
+
+lunar.easeinquad(a.progress): |-
+   return a.progress * a.progress;
+
+lunar.easeoutquad(a.progress): |-
+   return 1 - (1 - a.progress) * (1 - a.progress);
+
+lunar.easeinoutquad(a.progress): |-
+   return a.progress < 0.5
+      ? 2 * a.progress * a.progress
+      : 1 - math.pow(-2 * a.progress + 2, 2) / 2;
+
+lunar.easeincubic(a.progress): |-
+   return a.progress * a.progress * a.progress;
+
+lunar.easeoutcubic(a.progress): |-
+   return 1 - math.pow(1 - a.progress, 3);
+
+lunar.easeinoutcubic(a.progress): |-
+   return a.progress < 0.5
+      ? 4 * a.progress * a.progress * a.progress
+      : 1 - math.pow(-2 * a.progress + 2, 3) / 2;
+
+lunar.easeinquart(a.progress): |-
+   return a.progress * a.progress * a.progress * a.progress;
+
+lunar.easeoutquart(a.progress): |-
+   return 1 - math.pow(1 - a.progress, 4);
+
+lunar.easeinoutquart(a.progress): |-
+   return a.progress < 0.5
+      ? 8 * a.progress * a.progress * a.progress * a.progress
+      : 1 - math.pow(-2 * a.progress + 2, 4) / 2;
+
+lunar.easeinquint(a.progress): |-
+   return a.progress * a.progress * a.progress * a.progress * a.progress;
+
+lunar.easeoutquint(a.progress): |-
+   return 1 - math.pow(1 - a.progress, 5);
+
+lunar.easeinoutquint(a.progress): |-
+   return a.progress < 0.5
+      ? 16 * a.progress * a.progress * a.progress * a.progress * a.progress
+      : 1 - math.pow(-2 * a.progress + 2, 5) / 2;
+
+lunar.easeinexpo(a.progress): |-
+   return a.progress == 0
+      ? 0
+      : math.pow(2, 10 * a.progress - 10);
+
+lunar.easeoutexpo(a.progress): |-
+   return a.progress == 1
+      ? 1
+      : 1 - math.pow(2, -10 * a.progress);
+
+lunar.easeinoutexpo(a.progress): |-
+   return a.progress == 0
+      ? 0
+      : a.progress == 1
+         ? 1
+         : a.progress < 0.5
+            ? math.pow(2, 20 * a.progress - 10) / 2
+            : (2 - math.pow(2, -20 * a.progress + 10)) / 2;
+
+lunar.easeincirc(a.progress): |-
+   return math.sqrt(1 - math.pow(a.progress - 1, 2));
+
+lunar.easeoutcirc(a.progress): |-
+   return math.sqrt(1 - math.pow(a.progress - 1, 2));
+
+lunar.easeinoutcirc(a.progress): |-
+   return a.progress < 0.5
+      ? (1 - math.sqrt(1 - math.pow(2 * a.progress, 2))) / 2
+      : (math.sqrt(1 - math.pow(-2 * a.progress + 2, 2)) + 1) / 2;
+
+lunar.easeinback(a.progress): |-
+   t.overshoot=1.70158;
+   return (t.overshoot + 1) * a.progress * a.progress * a.progress - t.overshoot * a.progress * a.progress;
+
+lunar.easeoutback(a.progress): |-
+   t.overshoot=1.70158;
+   return 1 + (t.overshoot + 1) * math.pow(a.progress - 1, 3) + t.overshoot * math.pow(a.progress - 1, 2);
+
+lunar.easeinoutback(a.progress): |-
+   t.overshoot=1.70158;
+   t.c2 = t.overshoot + 1;
+   return a.progress < 0.5
+      ? (math.pow(2 * a.progress, 2) * ((t.c2 + 1) * 2 * a.progress - t.c2)) / 2
+      : (math.pow(2 * a.progress - 2, 2) * ((t.c2 + 1) * (a.progress * 2 - 2) + t.c2) + 2) / 2;
+
+lunar.easeinelastic(a.progress): |-
+   return a.progress == 0
+      ? 0
+      : a.progress == 1
+         ? 1
+         : -math.pow(2, 10 * a.progress - 10) * math.sin((a.progress * 10 - 10.75) * 90);
+
+lunar.easeoutelastic(a.progress): |-
+   return a.progress == 0
+      ? 0
+      : a.progress == 1
+         ? 1
+         : math.pow(2, -10 * a.progress) * math.sin((a.progress * 10 - 0.75) * 90) + 1;
+
+lunar.easeinoutelastic(a.progress): |-
+   return a.progress == 0
+      ? 0
+      : a.progress == 1
+         ? 1
+         : a.progress < 0.5
+            ? (math.pow(2, 20 * a.progress - 10) * math.sin((20 * a.progress - 11.125) * 90) * -1) / 2
+            : (math.pow(2, -20 * a.progress + 10) * math.sin((20 * a.progress - 11.125) * 90)) / 2 + 1;
+
+lunar.easeinbounce(a.progress): |-
+   return 1 - lunar.easeoutbounce(1 - a.progress);
+
+lunar.easeoutbounce(a.progress): |-
+   t.n1=7.5625;
+   t.d1=2.75;
+   return a.progress < 1 / t.d1
+      ? t.n1 * a.progress * a.progress
+      : a.progress < 2 / t.d1
+         ? t.n1 * (a.progress - 1.5 / t.d1) * (a.progress - 1.5 / t.d1) + 0.75
+         : a.progress < 2.5 / t.d1
+            ? t.n1 * (a.progress - 2.25 / t.d1) * (a.progress - 2.25 / t.d1) + 0.9375
+            : t.n1 * (a.progress - 2.625 / t.d1) * (a.progress - 2.625 / t.d1) + 0.984375;
+
+lunar.easeinoutbounce(a.progress): |-
+   return a.progress < 0.5
+      ? 1-lunar.easeinbounce(1-2 * a.progress) / 2
+      : 1 + lunar.easeoutbounce(2 * a.progress - 1) / 2;
+
+lunar.linear_wave(a.progress, a.hang): |-
+   c.pi = 3.141592653589793;
+   t.progress = a.progress * (c.pi / 180) + c.pi * 600;
+   t.hang = a.hang * (c.pi / 180);
+   return math.mod(math.abs(t.progress), 2 * c.pi + t.hang * 2) > c.pi + t.hang
+      ? math.clamp(-math.mod(math.abs(t.progress), c.pi + t.hang) / c.pi + 1, 0, 1)
+      : math.clamp(math.mod(math.abs(t.progress), c.pi + t.hang) / c.pi, 0, 1);

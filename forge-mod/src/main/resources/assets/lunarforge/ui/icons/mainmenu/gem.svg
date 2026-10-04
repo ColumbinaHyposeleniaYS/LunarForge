@@ -1,0 +1,54 @@
+<svg
+        version="1.1"
+        id="Capa_1"
+        x="0px"
+        y="0px"
+        viewBox="0 0 512 512"
+        style="enable-background:new 0 0 512 512;"
+        xml:space="preserve"
+        fill="#ffffff"
+        xmlns="http://www.w3.org/2000/svg"
+        xmlns:svg="http://www.w3.org/2000/svg">
+    <defs id="defs47" />
+    <g id="g6">
+        <g id="g4">
+            <polygon
+                    points="41.868,114.888 118.062,158.877 240.858,87.981 240.858,0"
+                    id="polygon2" />
+        </g>
+    </g>
+    <g id="g12">
+        <g id="g10">
+            <polygon
+                    points="26.727,141.113 26.727,370.887 102.92,326.897 102.92,185.103"
+                    id="polygon8" />
+        </g>
+    </g>
+    <g id="g18">
+        <g id="g16">
+            <polygon
+                    points="271.141,0 271.141,87.981 393.938,158.877 470.131,114.888"
+                    id="polygon14" />
+        </g>
+    </g>
+    <g id="g24">
+        <g id="g22">
+            <polygon points="256,114.207 133.203,185.103 133.203,326.897 256,397.793 378.796,326.897 378.796,185.103" id="polygon20" />
+        </g>
+    </g>
+    <g id="g30">
+        <g id="g28">
+            <polygon points="409.079,185.103 409.079,326.897 485.273,370.887 485.273,141.113" id="polygon26" />
+        </g>
+    </g>
+    <g id="g36">
+        <g id="g34">
+            <polygon points="118.062,353.122 41.868,397.112 240.858,512 240.858,424.019" id="polygon32" />
+        </g>
+    </g>
+    <g id="g42">
+        <g id="g40">
+            <polygon points="393.938,353.122 271.141,424.019 271.141,512 470.131,397.112" id="polygon38" />
+        </g>
+    </g>
+</svg>

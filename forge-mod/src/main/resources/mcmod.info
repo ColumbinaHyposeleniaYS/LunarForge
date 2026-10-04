@@ -1,0 +1,16 @@
+[
+  {
+    "modid": "lunarforge",
+    "name": "LunarForge",
+    "description": "Lunar client remake for 1.8.9 forge",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "https://www.youtube.com/@Tewxx",
+    "updateUrl": "",
+    "authorList": ["Mega"],
+    "credits": "Built from the official Minecraft Forge 1.8.9 MDK.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

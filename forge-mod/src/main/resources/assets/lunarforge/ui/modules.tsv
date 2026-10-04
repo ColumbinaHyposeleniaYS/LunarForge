@@ -1,0 +1,61 @@
+one_seven_visuals	1.7 Visuals	MECHANIC	one_seven_visuals
+fps	FPS	HUD	fps
+cps	CPS	HUD	cps
+toggle_sneak	Toggle Sneak/Sprint	MECHANIC	toggle_sneak
+hypixel_mod	Hypixel Mods	SERVER	hypixel_mod
+armorstatus	Armor Status	HUD	armorstatus
+keystrokes	Keystrokes	HUD	keystrokes
+coordinates	Coordinates	HUD	coordinates
+crosshair	Crosshair	MECHANIC	crosshair
+potion_effects	Potion Effects	HUD	potion_effects
+direction_hud	Direction HUD	HUD	direction_hud
+scoreboard	Scoreboard	HUD	scoreboard
+ping	Ping	HUD	ping
+freelook	Freelook	MECHANIC	freelook
+motion_blur	Motion Blur	MECHANIC	motion_blur
+scrollable_tooltips	Scrollable Tooltips	MECHANIC	scrollable_tooltips
+clock	Clock	HUD	clock
+stopwatch	Stopwatch	HUD	stopwatch
+memory	Memory	HUD	memory
+combo	Combo	HUD	combo
+reach_display	Reach Display	HUD	reach_display
+time_changer	Time Changer	MECHANIC	time_changer
+server_address	Server Address	HUD	server_address
+item_physics	Item Physics	MECHANIC	item_physics
+shiny_pots	Shiny Pots	MECHANIC	shiny_pots
+block_outline	Block Outline	MECHANIC	block_outline
+fov	FOV Mod	MECHANIC	fov
+bossbar	Boss Bar	HUD	bossbar
+2d_items	2D Items	MECHANIC	2d_items
+3d_skins	3D Skins	MECHANIC	3d_skins
+action_bar	Action Bar	MECHANIC	action_bar
+auto_text_actions	Auto Text Actions	MECHANIC	auto_text_actions
+auto_text_hotkey	Auto Text Hotkey	MECHANIC	auto_text_hotkey
+chat	Chat	MECHANIC	chat
+color_saturation	Color Saturation	MECHANIC	color_saturation
+damage_tint	Damage Tint	MECHANIC	damage_tint
+day_counter	Day Counter	HUD	day_counter
+fog	Fog	MECHANIC	fog
+glint_colorizer	Glint Colorizer	MECHANIC	glint_colorizer
+height_limit	Height Limit	MECHANIC	height_limit
+hit_color	Hit Color	MECHANIC	hit_color
+hitbox	Hitbox	MECHANIC	hitbox
+hurt_cam	Hurt Cam	MECHANIC	hurt_cam
+hypixel_bedwars	Bedwars	SERVER	hypixel_bedwars
+light_overlay	Light Overlay	MECHANIC	light_overlay
+lighting	Lighting	MECHANIC	lighting
+menu_blur	Menu Blur	MECHANIC	menu_blur
+mob_size	Mob Size	MECHANIC	mob_size
+nick_hider	Nick Hider	MECHANIC	nick_hider
+pack_display	Pack Display	HUD	pack_display
+particle_changer	Particle Changer	MECHANIC	particle_changer
+potion_counter	Potion Counter	HUD	potion_counter
+pvp_info	Pvp Info	MECHANIC	pvp_info
+quickplay	Quickplay	SERVER	quickplay
+saturation	Saturation	MECHANIC	saturation
+snaplook	Snaplook	MECHANIC	snaplook
+tab	Tab	MECHANIC	tab
+titles	Titles	MECHANIC	titles
+tnt_countdown	Tnt Countdown	MECHANIC	tnt_countdown
+weather_changer	Weather Changer	MECHANIC	weather_changer
+zoom	Zoom	MECHANIC	zoom
