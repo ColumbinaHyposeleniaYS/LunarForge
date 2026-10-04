@@ -265,7 +265,7 @@ public final class ModuleBlockHit extends Module {
         if (!GameplayUtil.isSword(mc.thePlayer.getHeldItem())) return;
         attacking = true;
         attackTicks = 0;
-        target = event.getTarget() instanceof EntityLivingBase ? (EntityLivingBase) event.getTarget() : null;
+        target = event.target instanceof EntityLivingBase ? (EntityLivingBase) event.target : null;
         if (autoBlockTime.is(AutoBlockTime.SMART) && mc.thePlayer.hurtTime == 0 && onFirstHit.on()) canBlock = true;
     }
 }
