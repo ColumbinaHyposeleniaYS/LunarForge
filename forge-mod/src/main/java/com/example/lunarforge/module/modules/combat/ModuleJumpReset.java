@@ -8,7 +8,7 @@ import com.example.lunarforge.util.GameplayUtil;
 import java.util.Random;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.network.play.server.SPacketEntityVelocity;
+import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
@@ -66,7 +66,7 @@ public final class ModuleJumpReset extends Module {
      * Called from CombatHooks (main thread) for every local-player velocity
      * packet. suppressed = the packet was absorbed by Knockback Delay.
      */
-    public void onVelocityPacket(SPacketEntityVelocity packet, boolean suppressed) {
+    public void onVelocityPacket(S12PacketEntityVelocity packet, boolean suppressed) {
         if (suppressed || waitingForReset) return;
         int motionX = packet.getMotionX();
         int motionY = packet.getMotionY();

@@ -108,7 +108,7 @@ public final class PortHooksTransformer implements IClassTransformer {
             }
             if (net && RenderHooksTransformer.named(m, "handleCloseWindow", "func_147276_a")
                     && m.desc.equals("(Lnet/minecraft/network/play/server/S2EPacketCloseWindow;)V")) count += closeWindow(m);
-            if (net && m.desc.equals("(Lnet/minecraft/network/play/server/SPacketEntityVelocity;)V")
+            if (net && m.desc.equals("(Lnet/minecraft/network/play/server/S12PacketEntityVelocity;)V")
                     && callsCheckThread(m)) count += velocityHook(m);
         }
         if (count == 0) return bytes;
@@ -304,7 +304,7 @@ public final class PortHooksTransformer implements IClassTransformer {
         InsnList hook = new InsnList();
         hook.add(new VarInsnNode(Opcodes.ALOAD, 1));
         hook.add(RenderHooksTransformer.invoke("com/example/lunarforge/module/CombatHooks", "velocity",
-                "(Lnet/minecraft/network/play/server/SPacketEntityVelocity;)Z"));
+                "(Lnet/minecraft/network/play/server/S12PacketEntityVelocity;)Z"));
         LabelNode vanilla = new LabelNode();
         hook.add(new JumpInsnNode(Opcodes.IFEQ, vanilla));
         hook.add(new InsnNode(Opcodes.RETURN));

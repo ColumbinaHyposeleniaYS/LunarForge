@@ -7,7 +7,7 @@ import com.example.lunarforge.module.modules.hud.ModuleReachDisplay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.network.play.server.S19PacketEntityStatus;
-import net.minecraft.network.play.server.SPacketEntityVelocity;
+import net.minecraft.network.play.server.S12PacketEntityVelocity;
 
 public final class CombatHooks {
     private CombatHooks() {}
@@ -26,7 +26,7 @@ public final class CombatHooks {
      * packet was absorbed (Knockback Delay) and vanilla must skip it; Jump
      * Reset only observes. Local-player packets only.
      */
-    public static boolean velocity(SPacketEntityVelocity packet) {
+    public static boolean velocity(S12PacketEntityVelocity packet) {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null) return false;
         if (packet.getEntityID() != mc.thePlayer.getEntityId()) return false;

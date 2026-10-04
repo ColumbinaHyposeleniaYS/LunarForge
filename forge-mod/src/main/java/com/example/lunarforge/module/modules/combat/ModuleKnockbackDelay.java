@@ -9,7 +9,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Random;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.play.server.SPacketEntityVelocity;
+import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
@@ -40,7 +40,7 @@ public final class ModuleKnockbackDelay extends Module {
     private final BoolSetting waterCheck = bool("waterCheck", false).label(() -> "Water Check");
 
     private final Random random = new Random();
-    private final Deque<SPacketEntityVelocity> held = new ArrayDeque<SPacketEntityVelocity>();
+    private final Deque<S12PacketEntityVelocity> held = new ArrayDeque<S12PacketEntityVelocity>();
     private long releaseTime;
     private long lastDelayed;
 
@@ -60,7 +60,7 @@ public final class ModuleKnockbackDelay extends Module {
      * Called from CombatHooks (main thread) for local-player velocity packets.
      * Returns true when the packet was absorbed and must not be applied by vanilla.
      */
-    public synchronized boolean onVelocityPacket(SPacketEntityVelocity packet) {
+    public synchronized boolean onVelocityPacket(S12PacketEntityVelocity packet) {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || mc.theWorld == null) return false;
         if (!held.isEmpty()) {
@@ -85,7 +85,7 @@ public final class ModuleKnockbackDelay extends Module {
     private synchronized void flush() {
         Minecraft mc = Minecraft.getMinecraft();
         while (!held.isEmpty()) {
-            SPacketEntityVelocity packet = held.pollFirst();
+            S12PacketEntityVelocity packet = held.pollFirst();
             if (mc.thePlayer == null) break;
             mc.thePlayer.motionX = packet.getMotionX() / 8000.0D;
             mc.thePlayer.motionY = packet.getMotionY() / 8000.0D;
