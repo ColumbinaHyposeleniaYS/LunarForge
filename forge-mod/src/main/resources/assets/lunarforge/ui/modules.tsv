@@ -59,9 +59,14 @@ titles	Titles	MECHANIC	titles
 tnt_countdown	Tnt Countdown	MECHANIC	tnt_countdown
 weather_changer	Weather Changer	MECHANIC	weather_changer
 zoom	Zoom	MECHANIC	zoom
-auto_clicker	Auto Clicker	MECHANIC	cps
-fast_place	Fast Place	MECHANIC	block_outline
-inventory_clicker	Inventory Clicker	MECHANIC	shulker_preview
-auto_tool	Auto Tool	MECHANIC	tier_tagger
-eagle	Eagle	MECHANIC	toggle_sneak
-block_hit	Block Hit	MECHANIC	block_outline
+auto_clicker	Auto Clicker	LEGIT	cps
+fast_place	Fast Place	LEGIT	block_outline
+inventory_clicker	Inventory Clicker	LEGIT	shulker_preview
+auto_tool	Auto Tool	LEGIT	tier_tagger
+eagle	Eagle	LEGIT	toggle_sneak
+block_hit	Block Hit	LEGIT	block_outline
+w_tap	WTap	COMBAT	cps
+knockback_delay	Knockback Delay	COMBAT	pvp_info
+aim_assist	Aim Assist	COMBAT	crosshair
+jump_reset	Jump Reset	COMBAT	keystrokes
+scaffold	Scaffold	WORLD	block_outline

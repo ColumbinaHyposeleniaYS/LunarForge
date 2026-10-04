@@ -1,4 +1,4 @@
-package com.example.lunarforge.module.modules.mechanic;
+package com.example.lunarforge.module.modules.legit;
 
 import com.example.lunarforge.module.Module;
 import com.example.lunarforge.module.Page;

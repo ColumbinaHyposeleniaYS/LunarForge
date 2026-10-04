@@ -125,9 +125,19 @@ public final class UiRenderer implements MenuCanvas {
     }
     private void mods() {
         float x = 110;
-        for (String category : new String[]{"ALL", "HUD", "SERVER", "MECHANIC"}) {
-            float w = width(spaced(lang(category)), bold, 7) + 16;
-            button(x, 43.5f, w, 14, spaced(lang(category)), "category:" + category, model.category.equals(category), 1, ""); x += w + 4;
+        String[] categories = {"ALL", "HUD", "SERVER", "MECHANIC", "LEGIT", "COMBAT", "WORLD"};
+        // seven tabs no longer fit with letterspacing + wide padding; fall back to plain labels when needed
+        float limit = 485f - 44f - 110f;
+        float spacedTotal = 0f, plainTotal = 0f;
+        for (String category : categories) {
+            spacedTotal += width(spaced(lang(category)), bold, 7) + 12;
+            plainTotal += width(lang(category), bold, 7) + 12;
+        }
+        boolean useSpaced = spacedTotal + (categories.length - 1) * 4 <= limit;
+        for (String category : categories) {
+            String label = useSpaced ? spaced(lang(category)) : lang(category);
+            float w = width(label, bold, 7) + 12;
+            button(x, 43.5f, w, 14, label, "category:" + category, model.category.equals(category), 1, ""); x += w + 4;
         }
         iconButton(x, 43.5f, 14, 14, model.compact() ? "icons/large-menu-24x24.png" : "icons/compact-menu-24x24.png", "compact", ""); x += 16;
         iconButton(x, 43.5f, 14, 14, "icons/sort_icons/" + UiModel.SORTS[model.sort()] + ".png", "sort", ""); x += 16;

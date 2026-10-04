@@ -108,6 +108,8 @@ public final class PortHooksTransformer implements IClassTransformer {
             }
             if (net && RenderHooksTransformer.named(m, "handleCloseWindow", "func_147276_a")
                     && m.desc.equals("(Lnet/minecraft/network/play/server/S2EPacketCloseWindow;)V")) count += closeWindow(m);
+            if (net && m.desc.equals("(Lnet/minecraft/network/play/server/SPacketEntityVelocity;)V")
+                    && callsCheckThread(m)) count += velocityHook(m);
         }
         if (count == 0) return bytes;
         LogManager.getLogger("LunarForge").info("Port hooks: {} hook(s) in {}", count, transformedName);
@@ -270,6 +272,46 @@ public final class PortHooksTransformer implements IClassTransformer {
             }
         }
         return n;
+    }
+
+    private static boolean callsCheckThread(MethodNode m) {
+        for (AbstractInsnNode insn : m.instructions.toArray()) {
+            if (insn instanceof MethodInsnNode) {
+                String name = ((MethodInsnNode) insn).name;
+                if (name.equals("checkThreadAndEnqueue") || name.equals("func_180031_a")) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * handleEntityVelocity: right after PacketThreadUtil.checkThreadAndEnqueue
+     * (only reached on the main thread) ask CombatHooks.velocity whether the
+     * packet was absorbed by Knockback Delay and skip the vanilla application
+     * in that case.
+     */
+    private static int velocityHook(MethodNode m) {
+        AbstractInsnNode after = null;
+        for (AbstractInsnNode insn : m.instructions.toArray()) {
+            if (insn instanceof MethodInsnNode) {
+                String name = ((MethodInsnNode) insn).name;
+                if (name.equals("checkThreadAndEnqueue") || name.equals("func_180031_a")) {
+                    after = insn;
+                    break;
+                }
+            }
+        }
+        InsnList hook = new InsnList();
+        hook.add(new VarInsnNode(Opcodes.ALOAD, 1));
+        hook.add(RenderHooksTransformer.invoke("com/example/lunarforge/module/CombatHooks", "velocity",
+                "(Lnet/minecraft/network/play/server/SPacketEntityVelocity;)Z"));
+        LabelNode vanilla = new LabelNode();
+        hook.add(new JumpInsnNode(Opcodes.IFEQ, vanilla));
+        hook.add(new InsnNode(Opcodes.RETURN));
+        hook.add(vanilla);
+        hook.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+        if (after != null) m.instructions.insert(after, hook); else m.instructions.insert(hook);
+        return 1;
     }
 
     private static int closeWindow(MethodNode m) {

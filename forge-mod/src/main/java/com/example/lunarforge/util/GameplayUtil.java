@@ -18,6 +18,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.item.EntityArmorStand;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
@@ -65,6 +68,51 @@ public final class GameplayUtil {
     }
 
     // ===== look / ray trace =====
+
+    /** Yaw (degrees) needed to look horizontally at (toX, toZ) from (fromX, fromZ). */
+    public static float aimYaw(double fromX, double fromZ, double toX, double toZ) {
+        double dx = toX - fromX;
+        double dz = toZ - fromZ;
+        return (float) (MathHelper.atan2(dz, dx) * 180.0D / Math.PI) - 90.0F;
+    }
+
+    /** Pitch (degrees, 1.8.9 convention: negative = up) needed to look at the point from (fromX, fromY, fromZ). */
+    public static float aimPitch(double fromX, double fromY, double fromZ, double toX, double toY, double toZ) {
+        double dx = toX - fromX;
+        double dy = toY - fromY;
+        double dz = toZ - fromZ;
+        double horizontal = MathHelper.sqrt_double(dx * dx + dz * dz);
+        return (float) -(MathHelper.atan2(dy, horizontal) * 180.0D / Math.PI);
+    }
+
+    /** Horizontal angle (degrees, wrapped to [-180, 180]) between the viewer's yaw and the direction to (x, z). */
+    public static float horizontalAngleTo(Entity viewer, double x, double z) {
+        float aim = aimYaw(viewer.posX, viewer.posZ, x, z);
+        return MathHelper.wrapAngleTo180_float(aim - viewer.rotationYaw);
+    }
+
+    /**
+     * Nearest attackable living target within range whose horizontal angle to
+     * the view direction stays within halfFov degrees, or null when none.
+     */
+    public static EntityLivingBase findTarget(Minecraft mc, double range, float halfFov) {
+        EntityLivingBase best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (Object object : mc.theWorld.loadedEntityList) {
+            if (!(object instanceof EntityLivingBase)) continue;
+            EntityLivingBase entity = (EntityLivingBase) object;
+            if (entity == mc.thePlayer || entity == mc.thePlayer.ridingEntity) continue;
+            if (entity instanceof EntityArmorStand || entity.isDead || entity.getHealth() <= 0.0F) continue;
+            double dist = mc.thePlayer.getDistanceToEntity(entity);
+            if (dist > range) continue;
+            if (Math.abs(horizontalAngleTo(mc.thePlayer, entity.posX, entity.posZ)) > halfFov) continue;
+            if (dist < bestDistance) {
+                bestDistance = dist;
+                best = entity;
+            }
+        }
+        return best;
+    }
 
     /** Direction vector for arbitrary yaw/pitch (same math as Entity.getVectorForRotation). */
     public static Vec3 lookVector(float yaw, float pitch) {
