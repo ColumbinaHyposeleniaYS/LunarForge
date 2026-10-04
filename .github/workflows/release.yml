@@ -56,7 +56,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          HASH=$(sha256sum forge-mod/build/libs/*.jar | awk '{print $1}')
           notes="LunarForge ${GITHUB_REF_NAME} - built from commit ${GITHUB_SHA}.
+
+          SHA256:
+          \`${HASH}\`
 
           原项目出处: https://codeberg.org/MegaPVP/LunarForge (原作者: MegaPVP)"
           gh release create "${GITHUB_REF_NAME}" forge-mod/build/libs/*.jar \
