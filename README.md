@@ -1,7 +1,9 @@
 <div align="center">
-  <img src="images/banner.png" alt="Lunar" width="512">
+  <img src="images/banner.png" alt="LunarForge" width="512">
 
-  # Lunar Client Remake
+  # LunarForge
+
+  **Lunar Client Remake · Minecraft 1.8.9 Forge Mod**
 
   **[简体中文](#zh) | [English](#en)**
 </div>
@@ -10,7 +12,7 @@
 
 ## 简体中文
 
-Lunar Client 的 Minecraft 1.8.9 Forge 重制版，以模组形式发布。这是 Lunar Client 的**重制版**，并非官方客户端，因此部分内容可能不完全准确。原作者花了很长时间确保大部分内容与原版 1:1 还原，但仍可能存在少量细节差异。
+LunarForge 是 Lunar Client 的 Minecraft 1.8.9 Forge 重制版，以模组形式发布。这是 Lunar Client 的**重制版**，并非官方客户端，因此部分内容可能不完全准确。原作者花了很长时间确保大部分内容与原版 1:1 还原，但仍可能存在少量细节差异。
 
 ### 特性
 
@@ -18,18 +20,28 @@ Lunar Client 的 Minecraft 1.8.9 Forge 重制版，以模组形式发布。这�
 - **全部饰品解锁**
 - **你和其他 Lunar 玩家可以互相看到！**
 - **支持旧版 Lunar 主菜单选项**
-- **开源，且不像正版 Lunar 那样出售你的数据**
+- **源码公开，且不像正版 Lunar 那样出售你的数据**（本仓库未附带 LICENSE，仅源码公开可审计，权限归属见文末说明）
+
+### 安装
+
+1. 安装 [Minecraft Forge 1.8.9](https://files.minecraftforge.net/net/minecraftforge/forge/index_1.8.9.html)。
+2. 从 Releases（发布页）下载 `lunarforge-*.jar`。
+3. 将 jar 放入 `.minecraft/mods/` 目录，启动游戏即可。
+4. 模组的配置与缓存保存在 `.minecraft/lunarforge/` 目录。
 
 ### 构建
 
-需要 **Java 8 JDK**：
-```
+需要 **Java 8 JDK**（必须是 1.8，较新版本的 JDK 无法运行本项目使用的 ForgeGradle 2.1）：
+
+```text
+# Windows
 .\gradlew build
+
+# Linux / macOS
+./gradlew build
 ```
 
-构建完成的 jar 位于 `build/libs/` 目录。
-
-预编译 jar 可在 Releases（发布页）下载。
+构建完成的 jar 位于 `build/libs/` 目录。本仓库自带 GitHub Actions 构建工作流，也可在 Actions 页面手动触发（Run workflow）。
 
 ### 🔒 安全审计报告
 
@@ -48,8 +60,11 @@ VirusTotal 70+ 引擎中仅 McAfee 系两家（Skyhigh SWG、Trellix ENS，共�
 #### 变更说明
 
 - 应仓库所有者要求，**Apollo**（`lunar:apollo` 服务器协议集成，向支持该协议的服务器同步模组开关状态）已全部注释禁用，默认不再注册该通道。
-- 供核验：v0.1.0 Release jar（构建自 commit `d827d9e`）SHA256：
+- 供核验：v0.1.0 Release jar（构建自 commit `d827d9e`，**早于 Apollo 禁用**，因此该 jar 内仍包含 Apollo 功能）SHA256：
+
   `ca840fda47675047d7861ecb933c46b2cb1aad270473b7f3a0f84250ca37e94c`
+
+  此后源码已有变更；后续新版本的核验哈希请以对应 Release 页面标注为准。
 
 ---
 
@@ -57,7 +72,7 @@ VirusTotal 70+ 引擎中仅 McAfee 系两家（Skyhigh SWG、Trellix ENS，共�
 
 ## English
 
-A Lunar Client remake for Minecraft 1.8.9 Forge, in the form of a mod. This is a **remake** of Lunar Client, not the real thing, so some things might not be perfectly accurate. The original author spent a very long time making sure most of it is 1:1 with the original, but expect some small differences here and there.
+LunarForge is a Lunar Client remake for Minecraft 1.8.9 Forge, in the form of a mod. This is a **remake** of Lunar Client, not the real thing, so some things might not be perfectly accurate. The original author spent a very long time making sure most of it is 1:1 with the original, but expect some small differences here and there.
 
 ### Features
 
@@ -65,18 +80,28 @@ A Lunar Client remake for Minecraft 1.8.9 Forge, in the form of a mod. This is a
 - **Every cosmetic unlocked**
 - **You can see other Lunar players and they can see you!**
 - **Options for legacy Lunar main menu**
-- **Open source & doesn't sell your data unlike real Lunar**
+- **Source available, and doesn't sell your data unlike real Lunar** (no LICENSE is shipped in this repository — the code is publicly auditable only; see the attribution note below)
+
+### Installation
+
+1. Install [Minecraft Forge 1.8.9](https://files.minecraftforge.net/net/minecraftforge/forge/index_1.8.9.html).
+2. Download `lunarforge-*.jar` from the Releases tab.
+3. Drop the jar into your `.minecraft/mods/` folder and start the game.
+4. Module data and caches are stored under `.minecraft/lunarforge/`.
 
 ### Building
 
-You need the **Java 8 JDK**:
-```
+You need the **Java 8 JDK** (exactly 1.8 — newer JDKs cannot run ForgeGradle 2.1, which this project uses):
+
+```text
+# Windows
 .\gradlew build
+
+# Linux / macOS
+./gradlew build
 ```
 
-The finished jar will be in `build/libs/`.
-
-Prebuilt jars are available in the Releases tab.
+The finished jar will be in `build/libs/`. The repository also ships a GitHub Actions workflow, which can be triggered manually from the Actions page (Run workflow).
 
 ### 🔒 Security Audit Report
 
@@ -95,8 +120,11 @@ Out of 70+ engines on VirusTotal, only two McAfee-lineage vendors (Skyhigh SWG a
 #### Changes made in this repository
 
 - At the repository owner's request, **Apollo** (the `lunar:apollo` server protocol integration that syncs module toggle states to supporting servers) has been fully commented out and disabled by default.
-- For verification: the SHA256 of the v0.1.0 release jar (built from commit `d827d9e`):
+- For verification: the SHA256 of the v0.1.0 release jar (built from commit `d827d9e`, **before** the Apollo disable — that jar still contains the Apollo feature):
+
   `ca840fda47675047d7861ecb933c46b2cb1aad270473b7f3a0f84250ca37e94c`
+
+  The source has changed since then; for future releases, use the hash noted on the corresponding Release page.
 
 ---
 
