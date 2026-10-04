@@ -19,6 +19,8 @@ import com.example.lunarforge.module.modules.hud.ModuleServerAddress;
 import com.example.lunarforge.module.modules.mechanic.ModuleAutoTextActions;
 import com.example.lunarforge.module.modules.mechanic.ModuleAutoClicker;
 import com.example.lunarforge.module.modules.mechanic.ModuleAutoTool;
+import com.example.lunarforge.module.modules.mechanic.ModuleBlockHit;
+import com.example.lunarforge.module.modules.mechanic.ModuleEagle;
 import com.example.lunarforge.module.modules.mechanic.ModuleFastPlace;
 import com.example.lunarforge.module.modules.mechanic.ModuleInventoryClicker;
 import com.example.lunarforge.module.modules.mechanic.ModuleAutoTextHotkey;
@@ -73,6 +75,8 @@ public final class ModuleManager {
         register(new ModuleFastPlace());
         register(new ModuleInventoryClicker());
         register(new ModuleAutoTool());
+        register(new ModuleEagle());
+        register(new ModuleBlockHit());
         register(new ModuleTimeChanger());
         register(new ModuleWeatherChanger());
         register(new ModuleLighting());

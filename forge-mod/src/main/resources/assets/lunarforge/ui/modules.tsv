@@ -63,3 +63,5 @@ auto_clicker	Auto Clicker	MECHANIC	cps
 fast_place	Fast Place	MECHANIC	block_outline
 inventory_clicker	Inventory Clicker	MECHANIC	shulker_preview
 auto_tool	Auto Tool	MECHANIC	tier_tagger
+eagle	Eagle	MECHANIC	toggle_sneak
+block_hit	Block Hit	MECHANIC	block_outline
