@@ -25,7 +25,8 @@ public final class ModuleCatalog {
         "combo", "reach_display", "zoom", "freelook", "snaplook", "hurt_cam", "scoreboard", "bossbar",
         "pack_display", "menu_blur", "motion_blur", "color_saturation",
         "hit_color", "shiny_pots", "glint_colorizer", "mob_size", "hitbox", "block_outline", "height_limit", "light_overlay", "particle_changer", "saturation", "titles", "action_bar", "scrollable_tooltips",
-        "potion_effects", "stopwatch", "chat", "nick_hider", "quickplay", "crosshair", "tab", "hypixel_mod", "hypixel_bedwars", "3d_skins");
+        "potion_effects", "stopwatch", "chat", "nick_hider", "quickplay", "crosshair", "tab", "hypixel_mod", "hypixel_bedwars", "3d_skins",
+        "auto_clicker", "fast_place", "inventory_clicker", "auto_tool");
 
     public static boolean defaultEnabled(String id) {
         com.example.lunarforge.module.Module m = com.example.lunarforge.module.ModuleManager.get(id);

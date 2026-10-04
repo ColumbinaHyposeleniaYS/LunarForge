@@ -59,3 +59,7 @@ titles	Titles	MECHANIC	titles
 tnt_countdown	Tnt Countdown	MECHANIC	tnt_countdown
 weather_changer	Weather Changer	MECHANIC	weather_changer
 zoom	Zoom	MECHANIC	zoom
+auto_clicker	Auto Clicker	MECHANIC	cps
+fast_place	Fast Place	MECHANIC	block_outline
+inventory_clicker	Inventory Clicker	MECHANIC	shulker_preview
+auto_tool	Auto Tool	MECHANIC	tier_tagger
