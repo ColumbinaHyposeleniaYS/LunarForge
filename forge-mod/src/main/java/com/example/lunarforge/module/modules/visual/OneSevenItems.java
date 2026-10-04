@@ -77,7 +77,7 @@ public final class OneSevenItems extends Module {
         boolean attack = mc.gameSettings.keyBindAttack.isKeyDown(), use = mc.gameSettings.keyBindUseItem.isKeyDown();
         boolean blockHitting = player.isUsingItem() && attack && mc.objectMouseOver != null
             && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK;
-        if (attack && use && mc.playerController.func_181040_m()) forcePlacing = true;
+        if (attack && use && mc.playerController.getIsHittingBlock()) forcePlacing = true;
         if (ticks > 0) {
             if (ticks >= end / 2 && blockHitting) {
                 if (fresh) { swingTicks = -1; swinging = true; }

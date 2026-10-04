@@ -216,7 +216,7 @@ public final class OneSevenHooks {
 
     public static boolean hittingBlock(PlayerControllerMP controller) {
         ModuleOneSevenVisuals m = module();
-        boolean vanilla = controller.func_181040_m();
+        boolean vanilla = controller.getIsHittingBlock();
         if (m == null) return vanilla;
         if (m.items.forcePlacing) return false;
         reflect();
@@ -255,7 +255,7 @@ public final class OneSevenHooks {
     public static Material clickMaterial(net.minecraft.block.Block block) {
         ModuleOneSevenVisuals m = module();
         Minecraft mc = Minecraft.getMinecraft();
-        if (m != null && m.items.blockHit() && mc.gameSettings.keyBindUseItem.isKeyDown() && !mc.playerController.func_181040_m()) return Material.air;
+        if (m != null && m.items.blockHit() && mc.gameSettings.keyBindUseItem.isKeyDown() && !mc.playerController.getIsHittingBlock()) return Material.air;
         return block.getMaterial();
     }
 

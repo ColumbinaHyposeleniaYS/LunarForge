@@ -201,7 +201,7 @@ public final class ModuleParticleChanger extends Module {
                 for (int j = 0; j < n; j++) {
                     double vx = random.nextFloat() * 2.0F - 1.0F, vy = random.nextFloat() * 2.0F - 1.0F, vz = random.nextFloat() * 2.0F - 1.0F;
                     EntityDiggingFX fx = (EntityDiggingFX)new EntityDiggingFX.Factory().getEntityFX(0, world, x, y, z, vx, vy, vz, Block.getStateId(block.getDefaultState()));
-                    fx.func_174846_a(new BlockPos(x, y, z));
+                    fx.setBlockPos(new BlockPos(x, y, z));
                     mc.effectRenderer.addEffect(fx);
                 }
             }

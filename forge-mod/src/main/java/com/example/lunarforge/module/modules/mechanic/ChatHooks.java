@@ -63,7 +63,7 @@ public final class ChatHooks {
             if (e.changed) out = e.component();
         }
         int width = MathHelper.floor_float(gui.getChatWidth() / gui.getChatScale());
-        newLines = GuiUtilRenderComponents.func_178908_a(out, width, mc().fontRendererObj, false, false).size() - 1;
+        newLines = GuiUtilRenderComponents.splitText(out, width, mc().fontRendererObj, false, false).size() - 1;
         return out;
     }
 
@@ -81,7 +81,7 @@ public final class ChatHooks {
     public static List<IChatComponent> splitText(IChatComponent c, int width, FontRenderer font, boolean a, boolean b) {
         ModuleChat chat = chat();
         if (chat != null && chat.headsOn() && chat.heads.skin(idCounter) != null) width -= 12;
-        return GuiUtilRenderComponents.func_178908_a(c, width, font, a, b);
+        return GuiUtilRenderComponents.splitText(c, width, font, a, b);
     }
 
     private static void removeLast(GuiNewChat gui) {
