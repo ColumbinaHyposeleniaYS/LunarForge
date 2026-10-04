@@ -5,6 +5,7 @@ import com.example.lunarforge.module.Page;
 import com.example.lunarforge.module.setting.BoolSetting;
 import com.example.lunarforge.module.setting.NumberSetting;
 import com.example.lunarforge.util.GameplayUtil;
+import java.util.Iterator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayer;

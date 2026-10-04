@@ -18,7 +18,6 @@ import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.InventoryEnderChest;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
-import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.lwjgl.input.Mouse;
 
 /**
@@ -27,8 +26,27 @@ import org.lwjgl.input.Mouse;
  * (vanilla only clicks once per press).
  */
 public final class ModuleInventoryClicker extends Module {
-    private static final Method MOUSE_CLICKED = ReflectionHelper.findMethod(
-            GuiScreen.class, "mouseClicked", "func_73864_a", int.class, int.class, int.class);
+    /** GuiScreen.mouseClicked under both MCP and SRG names; resolved lazily per JVM. */
+    private static volatile Method mouseClickedMethod;
+
+    private static Method mouseClicked() {
+        Method m = mouseClickedMethod;
+        if (m != null) return m;
+        synchronized (ModuleInventoryClicker.class) {
+            if (mouseClickedMethod == null) {
+                for (String name : new String[] {"mouseClicked", "func_73864_a"}) {
+                    try {
+                        Method found = GuiScreen.class.getDeclaredMethod(name, int.class, int.class, int.class);
+                        found.setAccessible(true);
+                        mouseClickedMethod = found;
+                        break;
+                    } catch (NoSuchMethodException ignored) {
+                    }
+                }
+            }
+            return mouseClickedMethod;
+        }
+    }
 
     private final NumberSetting triggerTicks = integer("triggerTicks", 2, 0, 20).label(() -> "Trigger Ticks");
     private final BoolSetting inInventory = bool("inInventory", true).label(() -> "In Inventory");
@@ -85,8 +103,13 @@ public final class ModuleInventoryClicker extends Module {
         int mouseY = screen.height - Mouse.getY() * screen.height / mc.displayHeight - 1;
         ticks++;
         if (ticks > triggerTicks.intValue()) {
+            Method method = mouseClicked();
+            if (method == null) {
+                ticks = 0;
+                return;
+            }
             try {
-                MOUSE_CLICKED.invoke(screen, mouseX, mouseY, 0);
+                method.invoke(screen, mouseX, mouseY, 0);
             } catch (InvocationTargetException | IllegalAccessException ignored) {
                 ticks = 0;
             }
