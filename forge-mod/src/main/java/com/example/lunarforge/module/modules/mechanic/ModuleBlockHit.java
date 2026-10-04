@@ -5,6 +5,7 @@ import com.example.lunarforge.module.Page;
 import com.example.lunarforge.module.setting.BoolSetting;
 import com.example.lunarforge.module.setting.ChoiceSetting;
 import com.example.lunarforge.module.setting.NumberSetting;
+import com.example.lunarforge.util.ClickCounter;
 import com.example.lunarforge.util.GameplayUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
@@ -90,6 +91,7 @@ public final class ModuleBlockHit extends Module {
     private int getBlockTicks;
     private EntityLivingBase target;
     private long timerStart = System.currentTimeMillis();
+    private boolean useKeyForced;
 
     public ModuleBlockHit() {
         super("BLOCK_HIT", false);
@@ -120,6 +122,7 @@ public final class ModuleBlockHit extends Module {
         startBlocking = attacking = canBlock = false;
         target = null;
         stopTick = holdTicks = attackTicks = sagTicks = getBlockTicks = 0;
+        useKeyForced = false;
     }
 
     /** Leader-Lite TimerUtil.hasTimeElapsed: elapsed >= ms without auto reset. */
@@ -146,6 +149,15 @@ public final class ModuleBlockHit extends Module {
         GameplayUtil.updateKeyState(mc.gameSettings.keyBindUseItem.getKeyCode());
         holdTicks = sagTicks = getBlockTicks = 0;
         timerReset();
+        useKeyForced = false;
+    }
+
+    /** Presses the use key for the player and counts the simulated click for the CPS HUD once per press. */
+    private void forceUseKey(Minecraft mc) {
+        int useCode = mc.gameSettings.keyBindUseItem.getKeyCode();
+        if (!useKeyForced && !mc.gameSettings.keyBindUseItem.isKeyDown()) ClickCounter.register(1);
+        KeyBinding.setKeyBindState(useCode, true);
+        useKeyForced = true;
     }
 
     @SubscribeEvent
@@ -161,9 +173,13 @@ public final class ModuleBlockHit extends Module {
             if (mc.gameSettings.keyBindAttack.isKeyDown() && mc.thePlayer.isBlocking()) {
                 startBlocking = true;
                 KeyBinding.setKeyBindState(useCode, false);
+                useKeyForced = false;
             }
             if (startBlocking) stopTick++;
-            if (stopTick == 2) KeyBinding.onTick(attackCode);
+            if (stopTick == 2) {
+                KeyBinding.onTick(attackCode);
+                ClickCounter.register(0);
+            }
             if (stopTick > stopTime.intValue()) {
                 GameplayUtil.updateKeyState(useCode);
                 startBlocking = false;
@@ -198,16 +214,18 @@ public final class ModuleBlockHit extends Module {
                     if (timerElapsed(blockDelay.intValue())) {
                         if (autoMode.is(AutoMode.SPAM)) {
                             KeyBinding.onTick(useCode);
+                            ClickCounter.register(1);
                             timerReset();
                             reset(mc);
                         }
                         if (autoMode.is(AutoMode.HOLD)) startBlocking = true;
                         if (startBlocking) {
-                            KeyBinding.setKeyBindState(useCode, true);
+                            forceUseKey(mc);
                             holdTicks++;
                         }
                         if (holdTicks > holdTick.intValue()) {
                             KeyBinding.setKeyBindState(useCode, false);
+                            useKeyForced = false;
                             startBlocking = false;
                             holdTicks = 0;
                             timerReset();
@@ -217,21 +235,23 @@ public final class ModuleBlockHit extends Module {
                 }
                 case HURT_TIME: {
                     if (mc.thePlayer.hurtTime >= minHurtTime.intValue() && mc.thePlayer.hurtTime <= maxHurtTime.intValue()) {
-                        KeyBinding.setKeyBindState(useCode, true);
+                        forceUseKey(mc);
                         startBlocking = true;
                     } else if (startBlocking) {
                         KeyBinding.setKeyBindState(useCode, false);
+                        useKeyForced = false;
                         startBlocking = false;
                     }
                     break;
                 }
                 case SAG: {
                     if (sagTicks < 10) {
-                        KeyBinding.setKeyBindState(useCode, true);
+                        forceUseKey(mc);
                         sagTicks++;
                     }
                     if (sagTicks >= 10) {
                         GameplayUtil.updateKeyState(useCode);
+                        useKeyForced = false;
                         sagTicks = 0;
                     }
                     break;
@@ -240,16 +260,18 @@ public final class ModuleBlockHit extends Module {
                     if (mc.thePlayer.hurtTime == smartBlockHurtTime.intValue()) canBlock = true;
                     if (canBlock) {
                         getBlockTicks++;
-                        KeyBinding.setKeyBindState(useCode, true);
+                        forceUseKey(mc);
                     }
                     if (mc.thePlayer.hurtTime == 9 && releaseAfterHit.on()) {
                         canBlock = false;
                         GameplayUtil.updateKeyState(useCode);
+                        useKeyForced = false;
                         getBlockTicks = 0;
                     }
                     if (getBlockTicks > smartBlockTick.intValue()) {
                         canBlock = false;
                         GameplayUtil.updateKeyState(useCode);
+                        useKeyForced = false;
                         getBlockTicks = 0;
                     }
                     break;

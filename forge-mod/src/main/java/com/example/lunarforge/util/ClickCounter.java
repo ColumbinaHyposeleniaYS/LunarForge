@@ -37,5 +37,21 @@ public final class ClickCounter {
 
     public static int of(boolean left, boolean ignoreWhileUsing) { return left ? left(ignoreWhileUsing) : right(); }
 
+    /**
+     * Registers a simulated click (0 = left, 1 = right) performed by gameplay modules
+     * (Auto Clicker, Fast Place, Block Hit, ...) that never produces a MouseEvent.
+     * Mirrors the bookkeeping of {@link #onMouse(MouseEvent) onMouse}.
+     */
+    public static void register(int button) {
+        Minecraft mc = Minecraft.getMinecraft();
+        long now = System.currentTimeMillis();
+        if (button == 0) {
+            LEFT.addLast(now);
+            if (mc.thePlayer != null && !mc.thePlayer.isUsingItem()) LEFT_NOT_USING.addLast(now);
+        } else if (button == 1) {
+            RIGHT.addLast(now);
+        }
+    }
+
     public static void clearRight() { RIGHT.clear(); }
 }

@@ -4,6 +4,7 @@ import com.example.lunarforge.module.Module;
 import com.example.lunarforge.module.Page;
 import com.example.lunarforge.module.setting.BoolSetting;
 import com.example.lunarforge.module.setting.NumberSetting;
+import com.example.lunarforge.util.ClickCounter;
 import com.example.lunarforge.util.Fields;
 import com.example.lunarforge.util.GameplayUtil;
 import java.lang.reflect.Field;
@@ -84,6 +85,9 @@ public final class ModuleFastPlace extends Module {
         if (delayMs > 0L) delayMs -= 50L;
         if (delayMs <= 0L && rightClickDelayTimer > 1 && canPlace(mc)) {
             Fields.setInt(RIGHT_CLICK_DELAY, mc, 0);
+            if (mc.gameSettings.keyBindUseItem.isKeyDown() && !mc.thePlayer.isUsingItem()) {
+                ClickCounter.register(1);
+            }
         }
     }
 }

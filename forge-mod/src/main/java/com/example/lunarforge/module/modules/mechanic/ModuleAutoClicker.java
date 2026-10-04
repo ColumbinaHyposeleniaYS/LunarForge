@@ -4,6 +4,7 @@ import com.example.lunarforge.module.Module;
 import com.example.lunarforge.module.Page;
 import com.example.lunarforge.module.setting.BoolSetting;
 import com.example.lunarforge.module.setting.NumberSetting;
+import com.example.lunarforge.util.ClickCounter;
 import com.example.lunarforge.util.GameplayUtil;
 import java.util.Iterator;
 import net.minecraft.client.Minecraft;
@@ -140,6 +141,7 @@ public final class ModuleAutoClicker extends Module {
                 clickDelay += nextClickDelay();
                 KeyBinding.setKeyBindState(attackCode, false);
                 KeyBinding.onTick(attackCode);
+                ClickCounter.register(0);
             }
         }
         if (blockHit.on() && blockHitDelay <= 0L && mc.gameSettings.keyBindUseItem.isKeyDown()
@@ -149,6 +151,7 @@ public final class ModuleAutoClicker extends Module {
             if (!mc.thePlayer.isUsingItem()) {
                 blockHitDelay += blockHitDelayMs();
                 KeyBinding.onTick(useCode);
+                ClickCounter.register(1);
             }
         }
     }
