@@ -24,7 +24,8 @@ public final class LunarNetwork {
         LunarBuild.init();
         LunarNetwork instance = new LunarNetwork();
         FMLCommonHandler.instance().bus().register(instance);
-        FMLCommonHandler.instance().bus().register(new Apollo());
+        // Apollo integration disabled (commented out at the repository owner's request, 2026-10-04).
+        // FMLCommonHandler.instance().bus().register(new Apollo());
         Thread t = new Thread(LunarNetwork::connectLoop, "LunarForge Websocket");
         t.setDaemon(true);
         t.start();
