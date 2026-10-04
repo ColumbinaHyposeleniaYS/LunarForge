@@ -53,9 +53,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          notes="LunarForge ${GITHUB_REF_NAME} - built from commit ${GITHUB_SHA}.
+
+          原项目出处: https://codeberg.org/MegaPVP/LunarForge (原作者: MegaPVP)"
           gh release create "${GITHUB_REF_NAME}" forge-mod/build/libs/*.jar \
             --title "LunarForge ${GITHUB_REF_NAME}" \
-            --notes "LunarForge ${GITHUB_REF_NAME} — built from commit ${GITHUB_SHA}.
-
-原项目出处：https://codeberg.org/MegaPVP/LunarForge （原作者：MegaPVP）"
+            --notes "$notes"
         working-directory: .
