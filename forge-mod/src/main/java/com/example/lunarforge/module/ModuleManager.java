@@ -28,7 +28,6 @@ import com.example.lunarforge.module.modules.combat.ModuleHitSelect;
 import com.example.lunarforge.module.modules.combat.ModuleJumpReset;
 import com.example.lunarforge.module.modules.combat.ModuleKnockbackDelay;
 import com.example.lunarforge.module.modules.combat.ModuleWTap;
-import com.example.lunarforge.module.modules.world.ModuleScaffold;
 import com.example.lunarforge.module.modules.mechanic.ModuleAutoTextHotkey;
 import com.example.lunarforge.module.modules.mechanic.ModuleDamageTint;
 import com.example.lunarforge.module.modules.mechanic.ModuleFog;
@@ -88,7 +87,6 @@ public final class ModuleManager {
         register(new ModuleAimAssist());
         register(new ModuleHitSelect());
         register(new ModuleJumpReset());
-        register(new ModuleScaffold());
         register(new ModuleTimeChanger());
         register(new ModuleWeatherChanger());
         register(new ModuleLighting());

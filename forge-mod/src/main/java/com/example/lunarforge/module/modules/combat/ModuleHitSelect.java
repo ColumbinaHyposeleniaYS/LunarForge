@@ -274,8 +274,8 @@ public final class ModuleHitSelect extends Module {
         if (useCancelled) event.setCanceled(true);
     }
 
-    /** Vape rightClickUse claim consumers (Scaffold blatant modes) suppress HitSelect while they bridge. */
+    /** Vape rightClickUse claim (former Scaffold blatant modes): always inactive since the Scaffold removal. */
     public static boolean isUseClaimActive() {
-        return com.example.lunarforge.module.modules.world.ModuleScaffold.isMovementClaimed();
+        return false;
     }
 }

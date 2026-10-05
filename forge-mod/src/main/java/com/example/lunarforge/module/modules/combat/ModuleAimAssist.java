@@ -2,7 +2,6 @@ package com.example.lunarforge.module.modules.combat;
 
 import com.example.lunarforge.module.Module;
 import com.example.lunarforge.module.Page;
-import com.example.lunarforge.module.modules.world.ModuleScaffold;
 import com.example.lunarforge.module.setting.BoolSetting;
 import com.example.lunarforge.module.setting.ChoiceSetting;
 import com.example.lunarforge.module.setting.NumberSetting;
@@ -216,7 +215,6 @@ public final class ModuleAimAssist extends Module {
 
     private boolean canAim(Minecraft mc, int blockBreakCooldownTicks) {
         if (mc.currentScreen != null) return false;
-        if (ModuleScaffold.isMovementClaimed()) return false;
         if (limitToItems.on() && !GameplayUtil.isSword(mc.thePlayer.getHeldItem())) return false;
         if (checkBlockBreak.on()) {
             if (mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectType.BLOCK) {

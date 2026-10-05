@@ -69,5 +69,4 @@ w_tap	WTap	COMBAT	cps
 knockback_delay	Knockback Delay	COMBAT	pvp_info
 aim_assist	Aim Assist	COMBAT	crosshair
 jump_reset	Jump Reset	COMBAT	keystrokes
-scaffold	Scaffold	WORLD	block_outline
 hit_select	Hit Select	COMBAT	crosshair
