@@ -64,7 +64,6 @@ fast_place	Fast Place	LEGIT	block_outline
 inventory_clicker	Inventory Clicker	LEGIT	shulker_preview
 auto_tool	Auto Tool	LEGIT	tier_tagger
 eagle	Eagle	LEGIT	toggle_sneak
-block_hit	Block Hit	LEGIT	block_outline
 block_hit_mode	Block Hit Mode	LEGIT	block_outline
 w_tap	WTap	COMBAT	cps
 knockback_delay	Knockback Delay	COMBAT	pvp_info
