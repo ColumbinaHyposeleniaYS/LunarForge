@@ -71,4 +71,3 @@ aim_assist	Aim Assist	COMBAT	crosshair
 jump_reset	Jump Reset	COMBAT	keystrokes
 scaffold	Scaffold	WORLD	block_outline
 hit_select	Hit Select	COMBAT	crosshair
-stuck	Stuck	LEGIT	toggle_sneak

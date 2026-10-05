@@ -3,7 +3,6 @@ package com.example.lunarforge.module;
 import com.example.lunarforge.module.modules.combat.ModuleJumpReset;
 import com.example.lunarforge.module.modules.combat.ModuleKnockbackDelay;
 import com.example.lunarforge.module.modules.legit.ModuleBlockHitMode;
-import com.example.lunarforge.module.modules.legit.ModuleStuck;
 import com.example.lunarforge.module.modules.hud.ModuleCombo;
 import com.example.lunarforge.module.modules.hud.ModuleReachDisplay;
 import com.example.lunarforge.util.CombatTimingTracker;
@@ -55,12 +54,6 @@ public final class CombatHooks {
         Module hitSelect = ModuleManager.get("hit_select");
         if (hitSelect instanceof com.example.lunarforge.module.modules.combat.ModuleHitSelect && hitSelect.isEnabled()) {
             ((com.example.lunarforge.module.modules.combat.ModuleHitSelect) hitSelect).onVelocityPacket();
-        }
-        if (!suppressed) {
-            Module stuck = ModuleManager.get("stuck");
-            if (stuck instanceof ModuleStuck && stuck.isEnabled()) {
-                suppressed = ((ModuleStuck) stuck).onVelocityPacket(packet);
-            }
         }
         return suppressed;
     }

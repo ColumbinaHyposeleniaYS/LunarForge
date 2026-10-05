@@ -12,11 +12,10 @@ import net.minecraft.util.MovementInput;
  * injects right after MovementInput.updatePlayerMoveState, and 1.8.9 Forge
  * has no equivalent event).
  *
- * Two modifier slots keep the application order deterministic: the scaffold
- * registers as primary (jump/sneak injection and the silent-rotation strafe
- * fix) and Stuck registers as override (freezing zeroes everything last).
- * The wrapper re-attaches itself whenever the player instance changes
- * (respawn, dimension change).
+ * Scaffold registers the modifier and applies its move fix (silent-rotation
+ * strafe correction), Telly jump injection and Legit edge sneaking. The
+ * wrapper re-attaches itself whenever the player instance changes (respawn,
+ * dimension change).
  */
 public final class PlayerInputHook extends MovementInput {
     public interface Modifier {
@@ -25,12 +24,11 @@ public final class PlayerInputHook extends MovementInput {
 
     private static PlayerInputHook active;
     private final List<Modifier> primaries = new ArrayList<Modifier>();
-    private final List<Modifier> overrides = new ArrayList<Modifier>();
 
     private PlayerInputHook() {}
 
-    /** Makes sure the wrapper sits on the current player and the modifiers are registered. */
-    public static synchronized void ensureAttached(Modifier primary, Modifier override) {
+    /** Makes sure the wrapper sits on the current player and the modifier is registered. */
+    public static synchronized void ensureAttached(Modifier primary) {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null) return;
         if (active == null) {
@@ -40,16 +38,14 @@ public final class PlayerInputHook extends MovementInput {
             active.takeOver(mc.thePlayer.movementInput);
         }
         if (primary != null && !active.primaries.contains(primary)) active.primaries.add(primary);
-        if (override != null && !active.overrides.contains(override)) active.overrides.add(override);
     }
 
-    /** Unregisters modifiers; restores vanilla input once nothing needs it anymore. */
-    public static synchronized void release(Modifier primary, Modifier override) {
+    /** Unregisters the modifier; restores vanilla input once nothing needs it anymore. */
+    public static synchronized void release(Modifier primary) {
         PlayerInputHook hook = active;
         if (hook == null) return;
         if (primary != null) hook.primaries.remove(primary);
-        if (override != null) hook.overrides.remove(override);
-        if (hook.primaries.isEmpty() && hook.overrides.isEmpty()) {
+        if (hook.primaries.isEmpty()) {
             Minecraft mc = Minecraft.getMinecraft();
             if (mc.thePlayer != null && mc.thePlayer.movementInput == hook) {
                 mc.thePlayer.movementInput = hook.backing;
@@ -76,6 +72,5 @@ public final class PlayerInputHook extends MovementInput {
         hook.jump = hook.backing.jump;
         hook.sneak = hook.backing.sneak;
         for (Modifier modifier : hook.primaries) modifier.modify(hook);
-        for (Modifier modifier : hook.overrides) modifier.modify(hook);
     }
 }

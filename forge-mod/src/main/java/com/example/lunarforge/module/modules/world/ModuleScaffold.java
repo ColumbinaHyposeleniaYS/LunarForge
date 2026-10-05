@@ -1,9 +1,7 @@
 package com.example.lunarforge.module.modules.world;
 
 import com.example.lunarforge.module.Module;
-import com.example.lunarforge.module.ModuleManager;
 import com.example.lunarforge.module.Page;
-import com.example.lunarforge.module.modules.legit.ModuleStuck;
 import com.example.lunarforge.module.setting.BoolSetting;
 import com.example.lunarforge.module.setting.ChoiceSetting;
 import com.example.lunarforge.module.setting.NumberSetting;
@@ -52,8 +50,9 @@ import org.lwjgl.opengl.GL11;
  * LegitTelly), seven rotation modes (None / Vanilla / Backwards / Prediction
  * / Strict / GodBridge / Snap), edge-limit Legit sneaking, LegitTelly phase
  * bridging, Snap mode with cell solving, per-mode rotation profiles,
- * right-click Telly override, block trail rendering, counter/BPS HUD and a
- * clutch that hands over to the Stuck module.
+ * right-click Telly override, block trail rendering and a counter/BPS HUD.
+ * The Leader clutch/Stuck handover (self-rescue) is intentionally not
+ * ported: its freeze cycles left the player unable to move.
  *
  * Framework adaptations (Leader has mixins/events LunarForge lacks):
  * - Silent rotations: Leader swaps the client rotation right before the C03
@@ -130,11 +129,8 @@ public final class ModuleScaffold extends Module {
     private final NumberSetting normalModeSpeed = decimal("normalModeSpeed", 180.0F, 1.0F, 180.0F).label(() -> "Normal Mode Speed");
     private final NumberSetting legitModeSpeed = decimal("legitModeSpeed", 180.0F, 1.0F, 180.0F).label(() -> "Legit Mode Speed");
     private final BoolSetting swing = bool("swing", true).label(() -> "Swing");
-    private final BoolSetting clutch = bool("clutch", true).label(() -> "Clutch");
-    private final BoolSetting onlyInVoid = bool("onlyInVoid", false).label(() -> "Only Void");
     private final BoolSetting bPSRender = bool("bPSRender", true).label(() -> "Render BPS");
     private final BoolSetting blockCounter = bool("blockCounter", false).label(() -> "Block Counter");
-    private final BoolSetting airRescue = bool("airRescue", true).label(() -> "Air Rescue");
     private final BoolSetting strictRaytrace = bool("strictRaytrace", false).label(() -> "Strict Raytrace");
     private final BoolSetting rightClickToSwitchTelly = bool("rightClickToSwitchTelly", false).label(() -> "Right Click To Switch Telly");
     private final BoolSetting warningLowBlocks = bool("warningLowBlocks", false).label(() -> "Warning Low Blocks");
@@ -169,8 +165,6 @@ public final class ModuleScaffold extends Module {
     private int startY = 256;
     private boolean shouldKeepY = false;
     private boolean towering = false;
-    private boolean clutchActive = false;
-    private boolean clutchOwnsStuck = false;
     private EnumFacing targetFacing = null;
     private int placeDelayCounter = 0;
     private double prevBpsX;
@@ -226,7 +220,7 @@ public final class ModuleScaffold extends Module {
 
     @Override protected void layout(Page page) {
         page.section("generalOptions", s -> {
-            s.add(mode, rotationMode, moveFix, placeDelay, swing, clutch);
+            s.add(mode, rotationMode, moveFix, placeDelay, swing);
             s.add(noUpdateWhenCanPlace, edgeLimit, godBridgeTolerance).hideIf(() -> !rotationMode.is(RotateMode.GOD_BRIDGE));
             s.add(jumpDelay).hideIf(() -> !mode.is(ScaffoldMode.TELLY) && !mode.is(ScaffoldMode.LEGIT_TELLY));
             s.add(startRotSpeed, normalRotSpeed).hideIf(() -> !mode.is(ScaffoldMode.TELLY));
@@ -236,10 +230,9 @@ public final class ModuleScaffold extends Module {
             s.add(speedLimitTicks, forwardRotationTicks).hideIf(() -> !mode.is(ScaffoldMode.TELLY) || !speedLimit.on());
             s.add(legitSneakDelay).hideIf(() -> !mode.is(ScaffoldMode.LEGIT));
             s.add(forwardSpeed, backSpeed, placeSpeed, tellyTicks).hideIf(() -> !mode.is(ScaffoldMode.LEGIT_TELLY));
-            s.add(onlyInVoid).hideIf(() -> !clutch.on());
             s.add(edgeThreshold, snapForwardSpeed, snapBackSpeed, earlySnap, snapForwardPitch, snapHoldTicks, delayPlacement)
                     .hideIf(() -> !rotationMode.is(RotateMode.SNAP));
-            s.add(airRescue, strictRaytrace, rightClickToSwitchTelly, bPSRender, blockCounter, warningLowBlocks);
+            s.add(strictRaytrace, rightClickToSwitchTelly, bPSRender, blockCounter, warningLowBlocks);
             s.add(lowBlocksThreshold).hideIf(() -> !warningLowBlocks.on());
         });
     }
@@ -283,7 +276,6 @@ public final class ModuleScaffold extends Module {
         profile.normalModeSpeed = normalModeSpeed.value();
         profile.legitModeSpeed = legitModeSpeed.value();
         profile.strictRaytrace = strictRaytrace.get();
-        profile.airRescue = airRescue.get();
         profile.edgeThreshold = edgeThreshold.value();
         profile.snapForwardSpeed = snapForwardSpeed.value();
         profile.snapBackSpeed = snapBackSpeed.value();
@@ -310,7 +302,6 @@ public final class ModuleScaffold extends Module {
         normalModeSpeed.set(profile.normalModeSpeed);
         legitModeSpeed.set(profile.legitModeSpeed);
         strictRaytrace.set(profile.strictRaytrace);
-        airRescue.set(profile.airRescue);
         edgeThreshold.set(profile.edgeThreshold);
         snapForwardSpeed.set(profile.snapForwardSpeed);
         snapBackSpeed.set(profile.snapBackSpeed);
@@ -393,12 +384,9 @@ public final class ModuleScaffold extends Module {
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.START) return;
         RotationSpoof.newTick();
-        if (isEnabled()) PlayerInputHook.ensureAttached(this.inputModifier, null);
+        if (isEnabled()) PlayerInputHook.ensureAttached(this.inputModifier);
         updateRightClickTelly();
         handleModeChange();
-        if (isEnabled() && (mc.thePlayer == null || mc.theWorld == null || mc.thePlayer.isDead)) {
-            clutchReset();
-        }
     }
 
     @SubscribeEvent
@@ -444,18 +432,6 @@ public final class ModuleScaffold extends Module {
             this.jumpDelayOverride = -1;
             this.tellyJumpDelayTimer = 0;
         }
-        this.updateClutch();
-        if (this.clutchActive) {
-            Module stuckModule = ModuleManager.get("stuck");
-            if (stuckModule instanceof ModuleStuck) {
-                ModuleStuck stuck = (ModuleStuck) stuckModule;
-                if (!stuck.isStuckActive()) {
-                    stuck.setEnabled(true);
-                    this.clutchOwnsStuck = stuck.isStuckActive();
-                }
-            }
-        }
-
         if (legitTellyMode) {
             this.selectScaffoldBlock();
             this.updateLegitTelly();
@@ -648,15 +624,6 @@ public final class ModuleScaffold extends Module {
                             this.pitch = keepPitch;
                             hitVec = keepHits ? keepMop.hitVec : null;
                         }
-                    } else if (this.airRescue.on() && (!mc.thePlayer.onGround || this.isGodBridgeOnEdge())) {
-                        for (BlockData option : options) {
-                            Vec3 rescue = this.applyRescueRotation(option);
-                            if (rescue != null) {
-                                blockData = option;
-                                hitVec = rescue;
-                                break;
-                            }
-                        }
                     }
                 } else if (rotationMode.is(RotateMode.PREDICTION)) {
                     double[] offsets = {0.1, 0.3, 0.5, 0.7, 0.9};
@@ -747,10 +714,6 @@ public final class ModuleScaffold extends Module {
                         this.canRotate = true;
                     }
                 }
-            }
-
-            if (blockData != null && hitVec == null && !mc.thePlayer.onGround && this.airRescue.on()) {
-                hitVec = this.applyRescueRotation(blockData);
             }
 
             if (this.canRotate && MoveMath.isForwardPressed()
@@ -909,7 +872,7 @@ public final class ModuleScaffold extends Module {
         if (isLegitTellyMode() && mc.thePlayer.onGround && MoveMath.isForwardPressed()) {
             input.jump = true;
         }
-        if (mode.is(ScaffoldMode.LEGIT) && mc.currentScreen == null && !this.clutchActive) {
+        if (mode.is(ScaffoldMode.LEGIT) && mc.currentScreen == null) {
             if (mc.thePlayer.onGround && (this.legitEdgeState == 1 || this.legitEdgeState == 2)) {
                 input.sneak = true;
                 input.moveStrafe *= 0.3F;
@@ -964,38 +927,6 @@ public final class ModuleScaffold extends Module {
             case Y: return new Vec3(blockPos.getX() + a, blockPos.getY() + n, blockPos.getZ() + b);
             default: return new Vec3(blockPos.getX() + a, blockPos.getY() + b, blockPos.getZ() + n);
         }
-    }
-
-    private Vec3 applyRescueRotation(BlockData blockData) {
-        BlockPos pos = blockData.blockPos();
-        EnumFacing facing = blockData.facing();
-        float bestYaw = -180.0F;
-        float bestPitch = 0.0F;
-        double bestDist = Double.MAX_VALUE;
-        Vec3 bestHit = null;
-        for (double a : placeOffsets) {
-            for (double b : placeOffsets) {
-                Vec3 target = this.facePoint(pos, facing, a, b);
-                float[] rot = Rotations.getRotations(target.xCoord, target.yCoord, target.zCoord);
-                rot[1] = Math.max(-90.0F, Math.min(90.0F, rot[1]));
-                MovingObjectPosition mop = Rotations.rayTrace(rot[0], rot[1], mc.playerController.getBlockReachDistance());
-                if (!this.isValidHit(mop, pos, facing)) continue;
-                float yawDiff = Math.abs(MathHelper.wrapAngleTo180_float(rot[0] - RotationSpoof.lastReportedYaw()));
-                float pitchDiff = rot[1] - RotationSpoof.lastReportedPitch();
-                double dist = yawDiff * yawDiff + pitchDiff * pitchDiff;
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestYaw = rot[0];
-                    bestPitch = rot[1];
-                    bestHit = mop.hitVec;
-                }
-            }
-        }
-        if (bestHit == null) return null;
-        this.yaw = Rotations.wrapAngleDiff(bestYaw, RotationSpoof.lastReportedYaw());
-        this.pitch = bestPitch;
-        this.canRotate = true;
-        return bestHit;
     }
 
     private BlockData getBlockData() {
@@ -1444,48 +1375,6 @@ public final class ModuleScaffold extends Module {
         return Math.max(-89.0F, Math.min(89.0F, Rotations.getRotations(x, y, z)[1]));
     }
 
-    // ===== clutch =====
-
-    private void updateClutch() {
-        if (!clutch.on() || mc.thePlayer.onGround || this.bbUnC()) {
-            this.clutchReset();
-            return;
-        }
-        double fallDistance = mc.thePlayer.fallDistance;
-        boolean shouldClutch = fallDistance > 2.0D && !MoveMath.isAirAbove() && !mc.thePlayer.isCollidedHorizontally
-                && (!this.onlyInVoid.on() || this.isFallingIntoVoid());
-        if (shouldClutch && !this.clutchActive) this.clutchActive = true;
-    }
-
-    private void clutchReset() {
-        Module stuckModule = ModuleManager.get("stuck");
-        if (this.clutchOwnsStuck && stuckModule instanceof ModuleStuck) {
-            ((ModuleStuck) stuckModule).setEnabled(false);
-        }
-        this.clutchActive = false;
-        this.clutchOwnsStuck = false;
-    }
-
-    private boolean isFallingIntoVoid() {
-        if (mc.thePlayer == null) return false;
-        for (int i = 0; i <= 128; i++) {
-            BlockPos checkPos = new BlockPos(MathHelper.floor_double(mc.thePlayer.posX),
-                    MathHelper.floor_double(mc.thePlayer.posY) - i, MathHelper.floor_double(mc.thePlayer.posZ));
-            if (mc.theWorld.getBlockState(checkPos).getBlock().getMaterial().isSolid()) return false;
-        }
-        return true;
-    }
-
-    private boolean bbUnC() {
-        if (mc.thePlayer == null) return false;
-        int playerY = MathHelper.floor_double(mc.thePlayer.posY);
-        for (int i = 1; i <= 2; i++) {
-            BlockPos checkPos = new BlockPos(MathHelper.floor_double(mc.thePlayer.posX), playerY - i, MathHelper.floor_double(mc.thePlayer.posZ));
-            if (mc.theWorld.getBlockState(checkPos).getBlock().getMaterial().isSolid()) return true;
-        }
-        return false;
-    }
-
     // ===== low blocks warning =====
 
     private void updateLowBlockWarning() {
@@ -1639,7 +1528,6 @@ public final class ModuleScaffold extends Module {
     // ===== enable / disable =====
 
     @Override protected void onEnable() {
-        clutchReset();
         restoreRightClickTelly();
         this.rightClickBlockedUntilRelease = Mouse.isButtonDown(1);
         this.lowBlocksWarned = false;
@@ -1680,26 +1568,22 @@ public final class ModuleScaffold extends Module {
         this.startY = mc.thePlayer != null ? MathHelper.floor_double(mc.thePlayer.posY) : 0;
         this.profileMode = mode.get().ordinal();
         this.lastSeenMode = this.profileMode;
-        PlayerInputHook.ensureAttached(this.inputModifier, null);
+        PlayerInputHook.ensureAttached(this.inputModifier);
     }
 
     @Override protected void onDisable() {
-        try {
-            this.clutchReset();
-        } finally {
-            this.restoreRightClickTelly();
-            this.lowBlocksWarned = false;
-            this.snapHoldCounter = 0;
-            this.snapLastYaw = Float.NaN;
-            this.snapLastPitch = 0.0F;
-            this.snapPendingTarget = null;
-            this.placedTrail.clear();
-            this.startY = mc.thePlayer != null ? MathHelper.floor_double(mc.thePlayer.posY) : 0;
-            if (mc.thePlayer != null && this.lastSlot != -1) mc.thePlayer.inventory.currentItem = this.lastSlot;
-            this.movementClaimed = false;
-            RotationSpoof.clear();
-            PlayerInputHook.release(this.inputModifier, null);
-        }
+        this.restoreRightClickTelly();
+        this.lowBlocksWarned = false;
+        this.snapHoldCounter = 0;
+        this.snapLastYaw = Float.NaN;
+        this.snapLastPitch = 0.0F;
+        this.snapPendingTarget = null;
+        this.placedTrail.clear();
+        this.startY = mc.thePlayer != null ? MathHelper.floor_double(mc.thePlayer.posY) : 0;
+        if (mc.thePlayer != null && this.lastSlot != -1) mc.thePlayer.inventory.currentItem = this.lastSlot;
+        this.movementClaimed = false;
+        RotationSpoof.clear();
+        PlayerInputHook.release(this.inputModifier);
     }
 
     // ===== inner classes =====
@@ -1753,7 +1637,6 @@ public final class ModuleScaffold extends Module {
         private float normalModeSpeed;
         private float legitModeSpeed;
         private boolean strictRaytrace;
-        private boolean airRescue;
         private float edgeThreshold;
         private float snapForwardSpeed;
         private float snapBackSpeed;
