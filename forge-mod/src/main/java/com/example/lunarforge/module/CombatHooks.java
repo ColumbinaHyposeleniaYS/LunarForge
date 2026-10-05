@@ -2,8 +2,10 @@ package com.example.lunarforge.module;
 
 import com.example.lunarforge.module.modules.combat.ModuleJumpReset;
 import com.example.lunarforge.module.modules.combat.ModuleKnockbackDelay;
+import com.example.lunarforge.module.modules.legit.ModuleBlockHitMode;
 import com.example.lunarforge.module.modules.hud.ModuleCombo;
 import com.example.lunarforge.module.modules.hud.ModuleReachDisplay;
+import com.example.lunarforge.util.CombatTimingTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.network.play.server.S19PacketEntityStatus;
@@ -12,9 +14,17 @@ import net.minecraft.network.play.server.S12PacketEntityVelocity;
 public final class CombatHooks {
     private CombatHooks() {}
     public static void status(S19PacketEntityStatus packet) {
-        if (Minecraft.getMinecraft().theWorld == null) return;
-        Entity entity = packet.getEntity(Minecraft.getMinecraft().theWorld);
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.theWorld == null) return;
+        Entity entity = packet.getEntity(mc.theWorld);
         if (entity == null) return;
+        if (packet.getOpCode() == 2) {
+            CombatTimingTracker.INSTANCE.onDamageConfirmed(entity.getEntityId());
+            Module blockHitMode = ModuleManager.get("block_hit_mode");
+            if (blockHitMode instanceof ModuleBlockHitMode && entity == mc.thePlayer) {
+                ((ModuleBlockHitMode) blockHitMode).onSelfDamaged();
+            }
+        }
         Module combo = ModuleManager.get("combo"), reach = ModuleManager.get("reach_display");
         if (combo instanceof ModuleCombo) ((ModuleCombo)combo).status(entity, packet.getOpCode());
         if (reach instanceof ModuleReachDisplay) ((ModuleReachDisplay)reach).status(entity, packet.getOpCode());

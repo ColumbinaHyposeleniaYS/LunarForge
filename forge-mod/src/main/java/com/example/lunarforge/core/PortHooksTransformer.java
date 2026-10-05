@@ -41,10 +41,11 @@ public final class PortHooksTransformer implements IClassTransformer {
         boolean guiChat = "net.minecraft.client.gui.GuiChat".equals(transformedName);
         boolean c01 = "net.minecraft.network.play.client.C01PacketChatMessage".equals(transformedName);
         boolean net = "net.minecraft.client.network.NetHandlerPlayClient".equals(transformedName);
+        boolean netManager = "net.minecraft.network.NetworkManager".equals(transformedName);
         boolean screen = "net.minecraft.client.gui.GuiScreen".equals(transformedName);
         boolean font = "net.minecraft.client.gui.FontRenderer".equals(transformedName);
         boolean info = "net.minecraft.client.network.NetworkPlayerInfo".equals(transformedName);
-        if (!effects && !chatLine && !newChat && !guiChat && !c01 && !net && !screen && !font && !info) return bytes;
+        if (!effects && !chatLine && !newChat && !guiChat && !c01 && !net && !netManager && !screen && !font && !info) return bytes;
         ClassNode node = new ClassNode();
         new ClassReader(bytes).accept(node, 0);
         int count = 0;
@@ -110,6 +111,8 @@ public final class PortHooksTransformer implements IClassTransformer {
                     && m.desc.equals("(Lnet/minecraft/network/play/server/S2EPacketCloseWindow;)V")) count += closeWindow(m);
             if (net && m.desc.equals("(Lnet/minecraft/network/play/server/S12PacketEntityVelocity;)V")
                     && callsCheckThread(m)) count += velocityHook(m);
+            if (netManager && RenderHooksTransformer.named(m, "sendPacket", "func_179290_a")
+                    && m.desc.equals("(Lnet/minecraft/network/Packet;)V")) count += sendPacketHook(m);
         }
         if (count == 0) return bytes;
         LogManager.getLogger("LunarForge").info("Port hooks: {} hook(s) in {}", count, transformedName);
@@ -311,6 +314,27 @@ public final class PortHooksTransformer implements IClassTransformer {
         hook.add(vanilla);
         hook.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
         if (after != null) m.instructions.insert(after, hook); else m.instructions.insert(hook);
+        return 1;
+    }
+
+    /**
+     * NetworkManager.sendPacket: injected at the head. PacketHooks decides
+     * whether the packet is absorbed (Block Hit Mode's Lag buffering holds it
+     * back and re-sends it later through the same manager) or sent normally;
+     * the tracker also observes outgoing attack packets on this path.
+     */
+    private static int sendPacketHook(MethodNode m) {
+        InsnList hook = new InsnList();
+        hook.add(new VarInsnNode(Opcodes.ALOAD, 0));
+        hook.add(new VarInsnNode(Opcodes.ALOAD, 1));
+        hook.add(RenderHooksTransformer.invoke("com/example/lunarforge/module/PacketHooks", "sendPacket",
+                "(Lnet/minecraft/network/NetworkManager;Lnet/minecraft/network/Packet;)Z"));
+        LabelNode vanilla = new LabelNode();
+        hook.add(new JumpInsnNode(Opcodes.IFEQ, vanilla));
+        hook.add(new InsnNode(Opcodes.RETURN));
+        hook.add(vanilla);
+        hook.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+        m.instructions.insert(hook);
         return 1;
     }
 

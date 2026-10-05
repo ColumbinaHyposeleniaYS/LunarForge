@@ -26,7 +26,7 @@ public final class ModuleCatalog {
         "pack_display", "menu_blur", "motion_blur", "color_saturation",
         "hit_color", "shiny_pots", "glint_colorizer", "mob_size", "hitbox", "block_outline", "height_limit", "light_overlay", "particle_changer", "saturation", "titles", "action_bar", "scrollable_tooltips",
         "potion_effects", "stopwatch", "chat", "nick_hider", "quickplay", "crosshair", "tab", "hypixel_mod", "hypixel_bedwars", "3d_skins",
-        "auto_clicker", "fast_place", "inventory_clicker", "auto_tool", "eagle", "block_hit",
+        "auto_clicker", "fast_place", "inventory_clicker", "auto_tool", "eagle", "block_hit", "block_hit_mode",
         "w_tap", "knockback_delay", "aim_assist", "jump_reset", "scaffold");
 
     public static boolean defaultEnabled(String id) {
