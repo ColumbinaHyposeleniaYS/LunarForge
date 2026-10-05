@@ -19,6 +19,9 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.client.C00PacketKeepAlive;
 import net.minecraft.network.play.client.C07PacketPlayerDigging;
+import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.MathHelper;
+import net.minecraft.util.Vec3;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
@@ -29,7 +32,9 @@ import org.lwjgl.opengl.Display;
 /**
  * Ported from Vape v4 (gg.vape.module.combat.BlockHit and the
  * gg.vape.module.combat.blockhit.* mode classes), placed in the legit
- * category as requested. Distinct from the Leader-Lite "Block Hit" module.
+ * category as requested. The Legit mode additionally preserves the
+ * Leader-Lite "Block Hit" module (the former duplicate ModuleBlockHit
+ * that used to sit next to this class) after its removal.
  *
  * Manual: on every left click that passes the chance roll the use key is
  * pressed for ~50 ms (blocks per second = your CPS x chance), releasing once
@@ -43,6 +48,11 @@ import org.lwjgl.opengl.Display;
  * Lag: runs a block cycle near a target and, whenever the stop-blocking
  * packet is sent, holds it back and buffers every following packet for a
  * random delay so the server keeps seeing you block longer.
+ * Legit: the preserved Leader-Lite "Block Hit" behavior. Helper stops
+ * blocking while you hold attack on a blocking sword, swings once and
+ * re-blocks after the configured stop ticks. Auto blocks for you after
+ * an attack using one of four timings (Delay / HurtTime / Sag / Smart)
+ * with chance, smart and range gates.
  *
  * Vape's SubModule per-mode settings became mode-conditional entries
  * (hideIf), its RandomValue ranges became Min/Max setting pairs, and its
@@ -52,11 +62,42 @@ import org.lwjgl.opengl.Display;
 public final class ModuleBlockHitMode extends Module {
 
     public enum HitMode implements ChoiceSetting.Option {
-        MANUAL("Manual"), PREDICT("Predict"), AUTO("Auto"), LAG("Lag");
+        MANUAL("Manual"), PREDICT("Predict"), AUTO("Auto"), LAG("Lag"), LEGIT("Legit");
 
         private final String label;
 
         HitMode(String label) { this.label = label; }
+
+        @Override public String langId() { return label; }
+    }
+
+    /** Sub-modes of the preserved Leader-Lite Block Hit behavior (Legit mode). */
+    public enum LegitMode implements ChoiceSetting.Option {
+        HELPER("Helper"), AUTO("Auto");
+
+        private final String label;
+
+        LegitMode(String label) { this.label = label; }
+
+        @Override public String langId() { return label; }
+    }
+
+    public enum LegitAutoBlockTime implements ChoiceSetting.Option {
+        DELAY("Delay"), HURT_TIME("HurtTime"), SAG("Sag"), SMART("Smart");
+
+        private final String label;
+
+        LegitAutoBlockTime(String label) { this.label = label; }
+
+        @Override public String langId() { return label; }
+    }
+
+    public enum LegitAutoMode implements ChoiceSetting.Option {
+        SPAM("Spam"), HOLD("Hold");
+
+        private final String label;
+
+        LegitAutoMode(String label) { this.label = label; }
 
         @Override public String langId() { return label; }
     }
@@ -80,6 +121,24 @@ public final class ModuleBlockHitMode extends Module {
     // ===== Lag (Vape RandomValue range [50, 100] of [0, 500]) =====
     private final NumberSetting delayMin = integer("delayMin", 50, 0, 500).label(() -> "Delay Min (ms)");
     private final NumberSetting delayMax = integer("delayMax", 100, 0, 500).label(() -> "Delay Max (ms)");
+
+    // ===== Legit (preserved Leader-Lite "Block Hit" module) =====
+    private final ChoiceSetting<LegitMode> legitMode = choice("legitMode", LegitMode.HELPER).label(() -> "Legit Mode");
+    private final NumberSetting legitStopTicks = integer("legitStopTicks", 2, 1, 5).label(() -> "Stop Ticks");
+    private final ChoiceSetting<LegitAutoBlockTime> legitAutoBlockTime = choice("legitAutoBlockTime", LegitAutoBlockTime.DELAY).label(() -> "AutoBlock Time");
+    private final ChoiceSetting<LegitAutoMode> legitAutoMode = choice("legitAutoMode", LegitAutoMode.SPAM).label(() -> "Auto Mode");
+    private final NumberSetting legitBlockDelay = integer("legitBlockDelay", 100, 0, 1000).label(() -> "Block Delay");
+    private final NumberSetting legitHoldTick = integer("legitHoldTick", 2, 2, 5).label(() -> "Hold Ticks");
+    private final NumberSetting legitMinHurtTime = integer("legitMinHurtTime", 10, 1, 10).label(() -> "Min HurtTime");
+    private final NumberSetting legitMaxHurtTime = integer("legitMaxHurtTime", 10, 1, 10).label(() -> "Max HurtTime");
+    private final BoolSetting legitOnFirstHit = bool("legitOnFirstHit", true).label(() -> "On First Hit");
+    private final NumberSetting legitSmartBlockTicks = integer("legitSmartBlockTicks", 2, 1, 5).label(() -> "Smart Block Ticks");
+    private final BoolSetting legitReleaseAfterHit = bool("legitReleaseAfterHit", true).label(() -> "Release After Hit");
+    private final NumberSetting legitSmartBlockHurtTime = integer("legitSmartBlockHurtTime", 2, 0, 10).label(() -> "Smart Block HurtTime");
+    private final NumberSetting legitChance = integer("legitChance", 50, 0, 100).label(() -> "Block Hit Chance");
+    private final BoolSetting legitSmart = bool("legitSmart", true).label(() -> "Smart");
+    private final BoolSetting legitAutoBlockRange = bool("legitAutoBlockRange", true).label(() -> "AutoBlock Range");
+    private final NumberSetting legitRange = decimal("legitRange", 3.0F, 1.0F, 4.0F).label(() -> "Range");
 
     // ===== Manual state =====
     private long manualReleaseTime;
@@ -114,6 +173,20 @@ public final class ModuleBlockHitMode extends Module {
     private NetworkManager bufferedManager;
     private boolean flushing;
 
+    // ===== Legit state =====
+    private boolean legitStartBlocking;
+    private boolean legitAttacking;
+    private boolean legitCanBlock;
+    private int legitStopTick;
+    private int legitHoldTicks;
+    private int legitAttackTicks;
+    private int legitSagTicks;
+    private int legitGetBlockTicks;
+    private EntityLivingBase legitTarget;
+    private long legitTimerStart = System.currentTimeMillis();
+    private LegitMode lastLegitMode;
+    private HitMode lastTickedMode;
+
     // ===== shared block state =====
     private boolean blocking;
     private boolean useKeyForced;
@@ -125,13 +198,28 @@ public final class ModuleBlockHitMode extends Module {
 
     @Override protected void layout(Page page) {
         page.section("generalOptions", s -> {
-            s.add(mode, requireMouseDown);
+            s.add(mode);
+            s.add(requireMouseDown).hideIf(() -> mode.is(HitMode.LEGIT));
             s.add(targetAngle, targetDistance).hideIf(() -> !mode.is(HitMode.PREDICT) && !mode.is(HitMode.LAG));
             s.add(ignoreManualBlock).hideIf(() -> !mode.is(HitMode.LAG));
             s.add(chanceMin, chanceMax).hideIf(() -> !mode.is(HitMode.MANUAL));
             s.group(maximumHurtTime, g -> g.add(includePing, holdAfter)).hideIf(() -> !mode.is(HitMode.PREDICT));
             s.add(delayMin, delayMax).hideIf(() -> !mode.is(HitMode.LAG));
+            s.add(legitMode).hideIf(() -> !mode.is(HitMode.LEGIT));
+            s.add(legitStopTicks).hideIf(() -> !mode.is(HitMode.LEGIT) || !legitMode.is(LegitMode.HELPER));
+            s.add(legitChance, legitSmart).hideIf(() -> !mode.is(HitMode.LEGIT) || !legitMode.is(LegitMode.AUTO));
+            s.group(legitAutoBlockRange, g -> g.add(legitRange)).hideIf(() -> !mode.is(HitMode.LEGIT) || !legitMode.is(LegitMode.AUTO));
+            s.group(legitAutoBlockTime, g -> {
+                g.add(legitAutoMode, legitBlockDelay).hideIf(() -> !legitAutoBlockTime.is(LegitAutoBlockTime.DELAY));
+                g.add(legitHoldTick).hideIf(() -> !(legitAutoBlockTime.is(LegitAutoBlockTime.DELAY) && legitAutoMode.is(LegitAutoMode.HOLD)));
+                g.add(legitMinHurtTime, legitMaxHurtTime).hideIf(() -> !legitAutoBlockTime.is(LegitAutoBlockTime.HURT_TIME));
+                g.add(legitOnFirstHit, legitSmartBlockTicks, legitReleaseAfterHit, legitSmartBlockHurtTime).hideIf(() -> !legitAutoBlockTime.is(LegitAutoBlockTime.SMART));
+            }).hideIf(() -> !mode.is(HitMode.LEGIT) || !legitMode.is(LegitMode.AUTO));
         });
+    }
+
+    @Override protected void onEnable() {
+        legitTimerStart = System.currentTimeMillis();
     }
 
     @Override protected void onDisable() {
@@ -160,6 +248,17 @@ public final class ModuleBlockHitMode extends Module {
         queuedPackets.clear();
         bufferedManager = null;
         flushing = false;
+        legitStartBlocking = false;
+        legitAttacking = false;
+        legitCanBlock = false;
+        legitStopTick = 0;
+        legitHoldTicks = 0;
+        legitAttackTicks = 0;
+        legitSagTicks = 0;
+        legitGetBlockTicks = 0;
+        legitTarget = null;
+        lastLegitMode = null;
+        lastTickedMode = null;
     }
 
     // ===== helpers =====
@@ -203,6 +302,12 @@ public final class ModuleBlockHitMode extends Module {
         if (value) forceUseKey(mc); else releaseUseKey(mc);
     }
 
+    /** Leader-Lite convention: restore the use binding from the raw mouse/keyboard state. In-world only. */
+    private void restoreUseKey(Minecraft mc) {
+        GameplayUtil.updateKeyState(mc.gameSettings.keyBindUseItem.getKeyCode());
+        useKeyForced = false;
+    }
+
     private boolean bufferElapsed(long ms) {
         return System.currentTimeMillis() - bufferTimerStart >= ms;
     }
@@ -211,6 +316,46 @@ public final class ModuleBlockHitMode extends Module {
     private static boolean isAutoClickerActive() {
         Module autoClicker = ModuleManager.get("auto_clicker");
         return autoClicker != null && autoClicker.isEnabled();
+    }
+
+    /** Releases everything the previous mode may still hold when the user switches modes. */
+    private void exitMode(Minecraft mc, HitMode previous) {
+        // setKeyBindState(false) can only release, so this stays safe inside GUIs
+        // (unlike updateKeyState, which restores from the raw mouse/keyboard state).
+        releaseUseKey(mc);
+        blocking = false;
+        switch (previous) {
+            case MANUAL:
+                manualReleaseTime = 0L;
+                break;
+            case PREDICT:
+                resetPrediction(mc);
+                break;
+            case AUTO:
+                autoPendingBlock = false;
+                autoReleaseTick = 0;
+                break;
+            case LAG:
+                if (bufferingPackets) flushPackets();
+                bufferingPackets = false;
+                blockCycleCompleted = false;
+                queuedPackets.clear();
+                bufferedManager = null;
+                flushing = false;
+                break;
+            case LEGIT:
+                legitStartBlocking = false;
+                legitAttacking = false;
+                legitCanBlock = false;
+                legitStopTick = 0;
+                legitHoldTicks = 0;
+                legitAttackTicks = 0;
+                legitSagTicks = 0;
+                legitGetBlockTicks = 0;
+                legitTarget = null;
+                lastLegitMode = null;
+                break;
+        }
     }
 
     // ===== events =====
@@ -260,6 +405,16 @@ public final class ModuleBlockHitMode extends Module {
         // AttackEntityEvent fires in the same tick, milliseconds apart.
         CombatTimingTracker.INSTANCE.onAttackPacketSent(event.target.getEntityId(),
                 !(event.target instanceof EntityLivingBase) || ((EntityLivingBase) event.target).hurtTime == 0);
+        if (mode.is(HitMode.LEGIT)) {
+            if (!GameplayUtil.isSword(mc.thePlayer.getHeldItem())) return;
+            legitAttacking = true;
+            legitAttackTicks = 0;
+            legitTarget = event.target instanceof EntityLivingBase ? (EntityLivingBase) event.target : null;
+            if (legitAutoBlockTime.is(LegitAutoBlockTime.SMART) && mc.thePlayer.hurtTime == 0 && legitOnFirstHit.on()) {
+                legitCanBlock = true;
+            }
+            return;
+        }
         if (!mode.is(HitMode.AUTO)) return;
         if (!shouldBlockSwordUse(mc)) return;
         autoPendingBlock = true;
@@ -295,7 +450,13 @@ public final class ModuleBlockHitMode extends Module {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || mc.theWorld == null) return;
 
-        switch (mode.get()) {
+        HitMode current = mode.get();
+        if (lastTickedMode != current) {
+            if (lastTickedMode != null) exitMode(mc, lastTickedMode);
+            lastTickedMode = current;
+        }
+
+        switch (current) {
             case MANUAL:
                 onManualTick(mc);
                 break;
@@ -307,6 +468,9 @@ public final class ModuleBlockHitMode extends Module {
                 break;
             case LAG:
                 onLagTick(mc);
+                break;
+            case LEGIT:
+                onLegitTick(mc);
                 break;
         }
     }
@@ -457,6 +621,163 @@ public final class ModuleBlockHitMode extends Module {
             return;
         }
         if (autoReleaseTick > 0 && --autoReleaseTick == 0) setBlocking(mc, false);
+    }
+
+    // ===== Legit (preserved Leader-Lite Block Hit) =====
+
+    /** Leader-Lite TimerUtil.hasTimeElapsed: elapsed >= ms without auto reset. */
+    private boolean legitTimerElapsed(long ms) {
+        return System.currentTimeMillis() - legitTimerStart >= ms;
+    }
+
+    private void legitTimerReset() {
+        legitTimerStart = System.currentTimeMillis();
+    }
+
+    /** Mirrors Leader-Lite's RotationUtil.distanceToBox: eye distance to the closest box point. */
+    private static double distanceToBox(Minecraft mc, AxisAlignedBB box) {
+        Vec3 eyes = mc.thePlayer.getPositionEyes(1.0F);
+        if (box.isVecInside(eyes)) return 0.0D;
+        double x = MathHelper.clamp_double(eyes.xCoord, box.minX, box.maxX);
+        double y = MathHelper.clamp_double(eyes.yCoord, box.minY, box.maxY);
+        double z = MathHelper.clamp_double(eyes.zCoord, box.minZ, box.maxZ);
+        return eyes.distanceTo(new Vec3(x, y, z));
+    }
+
+    /** Leader-Lite BlockHit reset: stop the synthetic use press and clear the timing state. */
+    private void legitReset(Minecraft mc) {
+        legitAttacking = legitCanBlock = false;
+        restoreUseKey(mc);
+        legitHoldTicks = legitSagTicks = legitGetBlockTicks = 0;
+        legitTimerReset();
+    }
+
+    private void onLegitTick(Minecraft mc) {
+        // Binding changes must not happen while a GUI is open (see the onDisable note).
+        if (mc.currentScreen != null) return;
+
+        LegitMode currentLegit = legitMode.get();
+        if (lastLegitMode != currentLegit) {
+            if (lastLegitMode != null) {
+                releaseUseKey(mc);
+                legitStartBlocking = false;
+                legitCanBlock = false;
+                legitStopTick = 0;
+                legitHoldTicks = 0;
+                legitSagTicks = 0;
+                legitGetBlockTicks = 0;
+                legitTimerReset();
+            }
+            lastLegitMode = currentLegit;
+        }
+
+        int attackCode = mc.gameSettings.keyBindAttack.getKeyCode();
+        int useCode = mc.gameSettings.keyBindUseItem.getKeyCode();
+
+        if (legitMode.is(LegitMode.HELPER)) {
+            if (mc.gameSettings.keyBindAttack.isKeyDown() && mc.thePlayer.isBlocking()) {
+                legitStartBlocking = true;
+                releaseUseKey(mc);
+            }
+            if (legitStartBlocking) legitStopTick++;
+            if (legitStopTick == 2) {
+                KeyBinding.onTick(attackCode);
+                ClickCounter.register(0);
+            }
+            if (legitStopTick > legitStopTicks.intValue()) {
+                restoreUseKey(mc);
+                legitStartBlocking = false;
+                legitStopTick = 0;
+            }
+            return;
+        }
+
+        // Legit Auto
+        if (legitTarget == null) return;
+        if (legitAttacking) legitAttackTicks++;
+        if (legitAttackTicks > 10) {
+            legitReset(mc);
+            legitTarget = null;
+            return;
+        }
+        if (Math.random() * 100.0D > legitChance.intValue()) {
+            legitReset(mc);
+            return;
+        }
+        if (legitAutoBlockRange.on() && distanceToBox(mc, legitTarget.getEntityBoundingBox()) >= legitRange.value()) {
+            legitReset(mc);
+            return;
+        }
+        if (legitSmart.on() && legitTarget.hurtTime == 0) {
+            legitReset(mc);
+            return;
+        }
+        if (!legitAttacking || !GameplayUtil.isSword(mc.thePlayer.getHeldItem())) return;
+
+        switch (legitAutoBlockTime.get()) {
+            case DELAY: {
+                if (legitTimerElapsed(legitBlockDelay.intValue())) {
+                    if (legitAutoMode.is(LegitAutoMode.SPAM)) {
+                        KeyBinding.onTick(useCode);
+                        ClickCounter.register(1);
+                        legitTimerReset();
+                        legitReset(mc);
+                    }
+                    if (legitAutoMode.is(LegitAutoMode.HOLD)) legitStartBlocking = true;
+                    if (legitStartBlocking) {
+                        forceUseKey(mc);
+                        legitHoldTicks++;
+                    }
+                    if (legitHoldTicks > legitHoldTick.intValue()) {
+                        releaseUseKey(mc);
+                        legitStartBlocking = false;
+                        legitHoldTicks = 0;
+                        legitTimerReset();
+                    }
+                }
+                break;
+            }
+            case HURT_TIME: {
+                if (mc.thePlayer.hurtTime >= legitMinHurtTime.intValue()
+                        && mc.thePlayer.hurtTime <= legitMaxHurtTime.intValue()) {
+                    forceUseKey(mc);
+                    legitStartBlocking = true;
+                } else if (legitStartBlocking) {
+                    releaseUseKey(mc);
+                    legitStartBlocking = false;
+                }
+                break;
+            }
+            case SAG: {
+                if (legitSagTicks < 10) {
+                    forceUseKey(mc);
+                    legitSagTicks++;
+                }
+                if (legitSagTicks >= 10) {
+                    restoreUseKey(mc);
+                    legitSagTicks = 0;
+                }
+                break;
+            }
+            case SMART: {
+                if (mc.thePlayer.hurtTime == legitSmartBlockHurtTime.intValue()) legitCanBlock = true;
+                if (legitCanBlock) {
+                    legitGetBlockTicks++;
+                    forceUseKey(mc);
+                }
+                if (mc.thePlayer.hurtTime == 9 && legitReleaseAfterHit.on()) {
+                    legitCanBlock = false;
+                    restoreUseKey(mc);
+                    legitGetBlockTicks = 0;
+                }
+                if (legitGetBlockTicks > legitSmartBlockTicks.intValue()) {
+                    legitCanBlock = false;
+                    restoreUseKey(mc);
+                    legitGetBlockTicks = 0;
+                }
+                break;
+            }
+        }
     }
 
     // ===== Lag =====
