@@ -53,7 +53,9 @@ public final class ModuleKnockbackDelay extends Module {
     }
 
     @Override protected void onDisable() {
-        held.clear();
+        // Apply whatever is still held instead of dropping it, so hits taken
+        // right before disabling still produce their knockback.
+        flush();
     }
 
     /**
@@ -61,6 +63,7 @@ public final class ModuleKnockbackDelay extends Module {
      * Returns true when the packet was absorbed and must not be applied by vanilla.
      */
     public synchronized boolean onVelocityPacket(S12PacketEntityVelocity packet) {
+        if (!isEnabled()) return false;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || mc.theWorld == null) return false;
         if (!held.isEmpty()) {

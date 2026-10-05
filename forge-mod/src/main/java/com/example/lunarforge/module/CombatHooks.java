@@ -34,7 +34,9 @@ public final class CombatHooks {
      * Injected at the head of NetHandlerPlayClient.handleEntityVelocity (after
      * its thread check, so always on the main thread). Returns true when the
      * packet was absorbed (Knockback Delay) and vanilla must skip it; Jump
-     * Reset only observes. Local-player packets only.
+     * Reset only observes. Local-player packets only, and both modules are
+     * only consulted while enabled — a disabled module must never swallow a
+     * packet, otherwise the knockback would be lost entirely.
      */
     public static boolean velocity(S12PacketEntityVelocity packet) {
         Minecraft mc = Minecraft.getMinecraft();
@@ -42,11 +44,11 @@ public final class CombatHooks {
         if (packet.getEntityID() != mc.thePlayer.getEntityId()) return false;
         boolean suppressed = false;
         Module knockbackDelay = ModuleManager.get("knockback_delay");
-        if (knockbackDelay instanceof ModuleKnockbackDelay) {
+        if (knockbackDelay instanceof ModuleKnockbackDelay && knockbackDelay.isEnabled()) {
             suppressed = ((ModuleKnockbackDelay) knockbackDelay).onVelocityPacket(packet);
         }
         Module jumpReset = ModuleManager.get("jump_reset");
-        if (jumpReset instanceof ModuleJumpReset) {
+        if (jumpReset instanceof ModuleJumpReset && jumpReset.isEnabled()) {
             ((ModuleJumpReset) jumpReset).onVelocityPacket(packet, suppressed);
         }
         return suppressed;
