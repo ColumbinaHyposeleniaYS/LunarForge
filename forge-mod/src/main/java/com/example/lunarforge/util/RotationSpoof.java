@@ -1,23 +1,25 @@
 package com.example.lunarforge.util;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.Packet;
 import net.minecraft.network.play.client.C03PacketPlayer;
-import net.minecraft.network.play.client.C05PacketPlayerLook;
-import net.minecraft.network.play.client.C06PacketPlayerPosLook;
 
 /**
  * Minimal silent-rotation bridge for the Leader-Lite Scaffold port.
  *
  * Leader swaps the client rotation right before EntityPlayerSP sends its C03
  * and restores it right after; LunarForge has no mixin infrastructure for
- * that. Instead a claim made during the player tick rewrites every outgoing
- * rotation packet (C03/C05/C06) inside the PacketHooks send injection, and
- * the scaffold additionally sends one explicit C05 per tick at
- * PlayerTickEvent END, so the server always receives the spoofed angles even
- * when vanilla decides it does not need a rotation packet. The claim lives
- * until the next client tick, so it also covers the natural C03 sent at the
- * end of the same tick.
+ * that. Instead the scaffold claims a rotation here during the player tick
+ * and sends one explicit C05 at PlayerTickEvent END, while this class - called
+ * from the PacketHooks send injection - absorbs the natural rotation packets
+ * vanilla sends afterwards so the server only ever sees the claimed angles:
+ * rotation-only C05 packets are dropped (the explicit C05 already reported
+ * the claim), position+rotation C06 packets are re-sent with the claimed
+ * angles and their original position, and rotation-less packets (C04, bare
+ * C03) pass through untouched.
+ *
+ * 1.8.9 note: C05PacketPlayerLook and C06PacketPlayerPosLook are inner
+ * classes of C03PacketPlayer, which exposes no rotation setters - hence the
+ * absorb-and-resend instead of rewriting the packets in place.
  */
 public final class RotationSpoof {
     private RotationSpoof() {}
@@ -30,6 +32,7 @@ public final class RotationSpoof {
     private static float lastReportedYaw;
     private static float lastReportedPitch;
     private static boolean lastReportedValid;
+    private static boolean sendingRotation;
 
     /** Expires last tick's claim; called once per client tick before modules claim again. */
     public static void newTick() {
@@ -42,6 +45,7 @@ public final class RotationSpoof {
         claimPriority = -1;
         smoothedYaw = 0.0F;
         lastReportedValid = false;
+        sendingRotation = false;
     }
 
     /** Leader UpdateEvent.setRotation: the higher priority claim of a tick wins. */
@@ -93,30 +97,58 @@ public final class RotationSpoof {
         return lastReportedPitch;
     }
 
-    /** One explicit rotation packet per tick so silent angles never go stale. */
+    /** One explicit rotation packet per tick (called at PlayerTickEvent END). */
     public static void sendRotationPacket() {
         if (!claimed) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || mc.thePlayer.sendQueue == null) return;
-        mc.thePlayer.sendQueue.addToSendQueue(new C05PacketPlayerLook(claimYaw, claimPitch, mc.thePlayer.onGround));
+        sendingRotation = true;
+        try {
+            mc.thePlayer.sendQueue.addToSendQueue(
+                    new C03PacketPlayer.C05PacketPlayerLook(claimYaw, claimPitch, mc.thePlayer.onGround));
+        } finally {
+            sendingRotation = false;
+        }
     }
 
     /**
-     * Called from PacketHooks for every outgoing packet; rewrites rotation
-     * packets while a claim is active and keeps the last-reported bookkeeping
-     * the scaffold rotates from. Never absorbs anything.
+     * Called from PacketHooks for every outgoing packet. Returns true to
+     * absorb the packet (natural rotation packets while a claim is active).
      */
-    public static void onSendPacket(Packet packet) {
-        if (packet instanceof C05PacketPlayerLook) {
-            if (claimed) ((C05PacketPlayerLook) packet).setRotation(claimYaw, claimPitch);
-            trackReported(claimed ? claimYaw : currentYaw(), claimed ? claimPitch : currentPitch());
-        } else if (packet instanceof C06PacketPlayerPosLook) {
-            if (claimed) ((C06PacketPlayerPosLook) packet).setRotation(claimYaw, claimPitch);
-            trackReported(claimed ? claimYaw : currentYaw(), claimed ? claimPitch : currentPitch());
-        } else if (packet.getClass() == C03PacketPlayer.class) {
-            if (claimed) ((C03PacketPlayer) packet).setRotation(claimYaw, claimPitch);
-            trackReported(claimed ? claimYaw : currentYaw(), claimed ? claimPitch : currentPitch());
+    public static boolean onSendPacket(Packet packet) {
+        if (!(packet instanceof C03PacketPlayer)) return false;
+        if (sendingRotation) {
+            trackReported(claimYaw, claimPitch);
+            return false;
         }
+        if (!claimed) {
+            trackReported(currentYaw(), currentPitch());
+            return false;
+        }
+        if (packet instanceof C03PacketPlayer.C06PacketPlayerPosLook) {
+            // Position + real rotation: re-send with the claimed angles so the position update survives.
+            Minecraft mc = Minecraft.getMinecraft();
+            if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
+                C03PacketPlayer.C06PacketPlayerPosLook posLook = (C03PacketPlayer.C06PacketPlayerPosLook) packet;
+                sendingRotation = true;
+                try {
+                    mc.thePlayer.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(
+                            posLook.getX(), posLook.getY(), posLook.getZ(),
+                            claimYaw, claimPitch, mc.thePlayer.onGround));
+                } finally {
+                    sendingRotation = false;
+                }
+            }
+            trackReported(claimYaw, claimPitch);
+            return true;
+        }
+        if (packet instanceof C03PacketPlayer.C05PacketPlayerLook) {
+            // Rotation-only: the explicit C05 of this tick already reported the claim.
+            trackReported(claimYaw, claimPitch);
+            return true;
+        }
+        // C04 (position only) and bare C03 (no rotation flag) carry no angles.
+        return false;
     }
 
     private static float currentYaw() {

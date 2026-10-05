@@ -199,6 +199,7 @@ public final class ModuleScaffold extends Module {
     private int rightClickSavedRotationMode = -1;
     private boolean lowBlocksWarned = false;
     private boolean rightClickBlockedUntilRelease;
+    private static boolean movementClaimed;
     private int profileMode;
     private int lastSeenMode;
     private boolean changingTellyOverride;
@@ -315,7 +316,7 @@ public final class ModuleScaffold extends Module {
         snapBackSpeed.set(profile.snapBackSpeed);
         earlySnap.set(profile.earlySnap);
         snapForwardPitch.set(profile.snapForwardPitch);
-        snapHoldTicks.set(profile.snapHoldTicks);
+        snapHoldTicks.set((float) profile.snapHoldTicks);
         delayPlacement.set(profile.delayPlacement);
         forwardSpeed.set(profile.forwardSpeed);
         backSpeed.set(profile.backSpeed);
@@ -860,8 +861,15 @@ public final class ModuleScaffold extends Module {
     /** One explicit rotation packet per tick so silent angles never go stale (see RotationSpoof). */
     @SubscribeEvent
     public void onPlayerTickEnd(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || event.player != mc.thePlayer || !isEnabled()) return;
+        if (event.phase != TickEvent.Phase.END || event.player != mc.thePlayer) return;
+        this.movementClaimed = isEnabled() && RotationSpoof.hasClaim();
+        if (!isEnabled()) return;
         if (RotationSpoof.hasClaim()) RotationSpoof.sendRotationPacket();
+    }
+
+    /** HitSelect/AimAssist suppression hook: the scaffold is actively bridging/rotating. */
+    public static boolean isMovementClaimed() {
+        return movementClaimed;
     }
 
     @SubscribeEvent
@@ -1513,7 +1521,7 @@ public final class ModuleScaffold extends Module {
         if (mode.is(ScaffoldMode.LEGIT) || mode.is(ScaffoldMode.LEGIT_TELLY)) return;
         if (this.placedTrail.isEmpty()) return;
 
-        float partial = event.getPartialTicks();
+        float partial = event.partialTicks;
         double ox = mc.thePlayer.prevPosX + (mc.thePlayer.posX - mc.thePlayer.prevPosX) * partial;
         double oy = mc.thePlayer.prevPosY + (mc.thePlayer.posY - mc.thePlayer.prevPosY) * partial;
         double oz = mc.thePlayer.prevPosZ + (mc.thePlayer.posZ - mc.thePlayer.prevPosZ) * partial;
@@ -1523,7 +1531,7 @@ public final class ModuleScaffold extends Module {
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GlStateManager.disableTexture2D();
         GlStateManager.disableDepth();
-        GlStateManager.glLineWidth(1.5F);
+        GL11.glLineWidth(1.5F);
         GL11.glBegin(GL11.GL_LINES);
         for (PlacedBlock b : this.placedTrail) {
             float life = 1.0F - (now - b.time) / 600.0F;
@@ -1563,7 +1571,7 @@ public final class ModuleScaffold extends Module {
     /** Simplified counter/BPS overlay (plain text + bars instead of Leader's shader cards). */
     @SubscribeEvent
     public void onRenderOverlay(RenderGameOverlayEvent.Post event) {
-        if (event.getType() != RenderGameOverlayEvent.ElementType.ALL) return;
+        if (event.type != RenderGameOverlayEvent.ElementType.ALL) return;
         if (!isEnabled() || mc.thePlayer == null) return;
 
         int count = 0;
@@ -1688,6 +1696,7 @@ public final class ModuleScaffold extends Module {
             this.placedTrail.clear();
             this.startY = mc.thePlayer != null ? MathHelper.floor_double(mc.thePlayer.posY) : 0;
             if (mc.thePlayer != null && this.lastSlot != -1) mc.thePlayer.inventory.currentItem = this.lastSlot;
+            this.movementClaimed = false;
             RotationSpoof.clear();
             PlayerInputHook.release(this.inputModifier, null);
         }
@@ -1730,5 +1739,30 @@ public final class ModuleScaffold extends Module {
             this.pos = pos;
             this.time = time;
         }
+    }
+
+    /** In-memory snapshot of the rotation settings, captured per scaffold mode. */
+    private static final class RotationProfile {
+        private RotateMode rotationMode;
+        private boolean noUpdateWhenCanPlace;
+        private boolean edgeLimit;
+        private float godBridgeTolerance;
+        private MoveFixMode moveFix;
+        private float startRotSpeed;
+        private float normalRotSpeed;
+        private float normalModeSpeed;
+        private float legitModeSpeed;
+        private boolean strictRaytrace;
+        private boolean airRescue;
+        private float edgeThreshold;
+        private float snapForwardSpeed;
+        private float snapBackSpeed;
+        private boolean earlySnap;
+        private float snapForwardPitch;
+        private int snapHoldTicks;
+        private boolean delayPlacement;
+        private float forwardSpeed;
+        private float backSpeed;
+        private float placeSpeed;
     }
 }

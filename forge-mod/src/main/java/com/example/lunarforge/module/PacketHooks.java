@@ -30,7 +30,7 @@ public final class PacketHooks {
         try {
             Minecraft mc = Minecraft.getMinecraft();
             if (mc.thePlayer == null) return false;
-            RotationSpoof.onSendPacket(packet);
+            if (RotationSpoof.onSendPacket(packet)) return true;
             boolean absorbed = false;
             Module blockHitMode = ModuleManager.get("block_hit_mode");
             if (blockHitMode instanceof ModuleBlockHitMode) {
