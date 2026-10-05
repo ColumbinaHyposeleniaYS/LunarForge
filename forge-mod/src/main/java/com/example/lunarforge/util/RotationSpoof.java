@@ -1,6 +1,7 @@
 package com.example.lunarforge.util;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.Packet;
 import net.minecraft.network.play.client.C03PacketPlayer;
 
 /**
@@ -127,13 +128,14 @@ public final class RotationSpoof {
         }
         if (packet instanceof C03PacketPlayer.C06PacketPlayerPosLook) {
             // Position + real rotation: re-send with the claimed angles so the position update survives.
+            // The 1.8.9 C06 inner class carries no readable position getters, but vanilla built it from
+            // the player state this very tick, so the live player values are identical.
             Minecraft mc = Minecraft.getMinecraft();
             if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
-                C03PacketPlayer.C06PacketPlayerPosLook posLook = (C03PacketPlayer.C06PacketPlayerPosLook) packet;
                 sendingRotation = true;
                 try {
                     mc.thePlayer.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(
-                            posLook.getX(), posLook.getY(), posLook.getZ(),
+                            mc.thePlayer.posX, mc.thePlayer.getEntityBoundingBox().minY, mc.thePlayer.posZ,
                             claimYaw, claimPitch, mc.thePlayer.onGround));
                 } finally {
                     sendingRotation = false;
