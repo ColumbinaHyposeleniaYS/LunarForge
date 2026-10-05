@@ -97,7 +97,10 @@ public final class ModuleScaffold extends Module {
 
     @Override protected void onDisable() {
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.thePlayer != null && mc.gameSettings != null) {
+        // Vanilla unpresses every binding when a GUI opens, so with a screen open
+        // there is nothing to restore — and restoring from the raw keyboard state
+        // would press sneak for Shift held in the GUI (shift-click).
+        if (mc.thePlayer != null && mc.gameSettings != null && mc.currentScreen == null) {
             GameplayUtil.updateKeyState(mc.gameSettings.keyBindSneak.getKeyCode());
         }
         placeWaitTicks = 0;
@@ -195,7 +198,12 @@ public final class ModuleScaffold extends Module {
         if (event.phase == TickEvent.Phase.START) {
             if (shouldScaffold(mc)) edgeSneak(mc);
         } else if (event.phase == TickEvent.Phase.END) {
-            GameplayUtil.updateKeyState(mc.gameSettings.keyBindSneak.getKeyCode());
+            // Never touch the sneak binding while a GUI is open: Shift there belongs
+            // to shift-clicks, and restoring from the raw keyboard state would sneak
+            // the player in the world while the inventory is open.
+            if (mc.currentScreen == null) {
+                GameplayUtil.updateKeyState(mc.gameSettings.keyBindSneak.getKeyCode());
+            }
         }
     }
 

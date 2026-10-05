@@ -58,7 +58,11 @@ public final class ModuleJumpReset extends Module {
         if (jumping) {
             jumping = false;
             Minecraft mc = Minecraft.getMinecraft();
-            if (mc.gameSettings != null) GameplayUtil.updateKeyState(mc.gameSettings.keyBindJump.getKeyCode());
+            // With a GUI open vanilla has already unpressed the binding — do not
+            // restore it from the raw keyboard state.
+            if (mc.gameSettings != null && mc.currentScreen == null) {
+                GameplayUtil.updateKeyState(mc.gameSettings.keyBindJump.getKeyCode());
+            }
         }
     }
 
@@ -123,7 +127,9 @@ public final class ModuleJumpReset extends Module {
             }
         } else if (event.phase == TickEvent.Phase.END && jumping) {
             jumping = false;
-            GameplayUtil.updateKeyState(mc.gameSettings.keyBindJump.getKeyCode());
+            if (mc.currentScreen == null) {
+                GameplayUtil.updateKeyState(mc.gameSettings.keyBindJump.getKeyCode());
+            }
         }
     }
 }

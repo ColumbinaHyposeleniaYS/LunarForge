@@ -136,7 +136,11 @@ public final class ModuleBlockHitMode extends Module {
 
     @Override protected void onDisable() {
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.gameSettings != null) GameplayUtil.updateKeyState(mc.gameSettings.keyBindUseItem.getKeyCode());
+        // With a GUI open vanilla has already unpressed the binding, and restoring
+        // from the raw keyboard state would press use for a right-click held in the GUI.
+        if (mc.gameSettings != null && mc.currentScreen == null) {
+            GameplayUtil.updateKeyState(mc.gameSettings.keyBindUseItem.getKeyCode());
+        }
         blocking = false;
         useKeyForced = false;
         manualReleaseTime = 0L;

@@ -52,7 +52,12 @@ public final class ModuleEagle extends Module {
     @Override protected void onDisable() {
         sneakDelay = 0;
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.gameSettings != null) GameplayUtil.updateKeyState(mc.gameSettings.keyBindSneak.getKeyCode());
+        // Vanilla unpresses every binding when a GUI opens, so with a screen open
+        // there is nothing to restore — and restoring from the raw keyboard state
+        // would press sneak for Shift held in the GUI (shift-click).
+        if (mc.gameSettings != null && mc.currentScreen == null) {
+            GameplayUtil.updateKeyState(mc.gameSettings.keyBindSneak.getKeyCode());
+        }
     }
 
     /** Mirrors Leader-Lite's PlayerUtil.canMove: nothing collides when the bounding box is offset by (x, -1, z). */
@@ -138,16 +143,20 @@ public final class ModuleEagle extends Module {
      * Leader-Lite MoveInputEvent replacement: restore the sneak key to its physical
      * state, then force it pressed for this tick when Eagle wants to sneak, so the
      * movement input computed right afterwards uses vanilla sneak behaviour.
+     *
+     * The restore happens only in-game: with a GUI open the key binding must stay
+     * unpressed (vanilla unpressed it when the screen opened), otherwise pressing
+     * Shift inside the inventory would sneak the player in the world.
      */
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.phase != TickEvent.Phase.START || event.player != mc.thePlayer || !isEnabled()) return;
         if (mc.theWorld == null) return;
+        if (mc.currentScreen != null) return;
 
         int sneakCode = mc.gameSettings.keyBindSneak.getKeyCode();
         GameplayUtil.updateKeyState(sneakCode);
-        if (mc.currentScreen != null) return;
         if (shouldSneak(mc) && (sneakDelay > 0 || canMoveSafely(mc))) {
             KeyBinding.setKeyBindState(sneakCode, true);
         }
