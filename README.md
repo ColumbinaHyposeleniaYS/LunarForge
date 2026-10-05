@@ -6,6 +6,8 @@
   **Lunar Client Remake · Minecraft 1.8.9 Forge Mod**
 
   **[English](#en) | [简体中文](#zh)**
+
+  [![GitHub Stars](https://img.shields.io/github/stars/ColumbinaHyposeleniaYS/LunarForge?style=social&label=Star)](https://github.com/ColumbinaHyposeleniaYS/LunarForge/stargazers)
 </div>
 
 <a id="en"></a>
