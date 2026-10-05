@@ -51,6 +51,10 @@ public final class CombatHooks {
         if (jumpReset instanceof ModuleJumpReset && jumpReset.isEnabled()) {
             ((ModuleJumpReset) jumpReset).onVelocityPacket(packet, suppressed);
         }
+        Module hitSelect = ModuleManager.get("hit_select");
+        if (hitSelect instanceof com.example.lunarforge.module.modules.combat.ModuleHitSelect && hitSelect.isEnabled()) {
+            ((com.example.lunarforge.module.modules.combat.ModuleHitSelect) hitSelect).onVelocityPacket();
+        }
         return suppressed;
     }
 }
