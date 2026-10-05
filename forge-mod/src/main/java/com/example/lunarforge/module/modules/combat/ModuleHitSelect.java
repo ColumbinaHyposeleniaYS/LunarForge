@@ -150,7 +150,7 @@ public final class ModuleHitSelect extends Module {
     }
 
     private static EntityLivingBase crosshairTarget(Minecraft mc) {
-        if (mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != net.minecraft.util.MovingObjectType.ENTITY) {
+        if (mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != net.minecraft.util.MovingObjectPosition.MovingObjectType.ENTITY) {
             return null;
         }
         return mc.objectMouseOver.entityHit instanceof EntityLivingBase
@@ -239,12 +239,9 @@ public final class ModuleHitSelect extends Module {
             inManualAttack = false;
         }
         ItemStack held = mc.thePlayer.getHeldItem();
-        if (held != null) {
-            net.minecraft.entity.ai.attributes.AttributeModifier modifier =
-                    EnchantmentHelper.getModifierForCreature(held, target.getCreatureAttribute());
-            if (modifier != null && modifier.getAmount() > 0.0D) {
-                mc.thePlayer.onEnchantmentCritical(target);
-            }
+        if (held != null
+                && EnchantmentHelper.getModifierForCreature(held, target.getCreatureAttribute()) > 0.0F) {
+            mc.thePlayer.onEnchantmentCritical(target);
         }
     }
 
@@ -263,10 +260,18 @@ public final class ModuleHitSelect extends Module {
         boolean useCancelled = mode.is(HitMode.USE_CANCEL) ? cancelActive : cancelUse;
         if (!useCancelled) return;
         if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
-                || event.action == PlayerInteractEvent.Action.RIGHT_CLICK_AIR
-                || event.action == PlayerInteractEvent.Action.RIGHT_CLICK_ENTITY) {
+                || event.action == PlayerInteractEvent.Action.RIGHT_CLICK_AIR) {
             event.setCanceled(true);
         }
+    }
+
+    /** Right-clicking an entity (riding, trading) is its own event in 1.8.9 Forge. */
+    @SubscribeEvent
+    public void onEntityInteract(net.minecraftforge.event.entity.player.EntityInteractEvent event) {
+        if (!isEnabled()) return;
+        if (event.target == null || event.target.worldObj == null || !event.target.worldObj.isRemote) return;
+        boolean useCancelled = mode.is(HitMode.USE_CANCEL) ? cancelActive : cancelUse;
+        if (useCancelled) event.setCanceled(true);
     }
 
     /** Vape rightClickUse claim consumers (Scaffold blatant modes) suppress HitSelect while they bridge. */

@@ -6,7 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
-import net.minecraft.util.MovingObjectType;
+import net.minecraft.util.MovingObjectPosition.MovingObjectType;
 
 /**
  * Ported from Vape v4 (blatant.scaffold.TellyBridgeScaffoldMode, the
@@ -48,7 +48,7 @@ final class TellyBridgeMode {
     private double[] initialPlacement;
     private double[] lastAimTarget;
     private ItemStack activationItemStack;
-    private final ArrayList<Long> recentPlacements = new ArrayList<Long>();
+    private final ArrayList<Integer> recentPlacements = new ArrayList<Integer>();
     private WalkTask movementTask;
 
     TellyBridgeMode(ModuleScaffold scaffold, BooleanActivation requireRightClick,
@@ -491,7 +491,7 @@ final class TellyBridgeMode {
 
     private long sumPlacementHistory() {
         long total = 0;
-        for (Long value : recentPlacements) total += value;
+        for (Integer value : recentPlacements) total += value;
         return total;
     }
 

@@ -18,7 +18,6 @@ import net.minecraft.entity.item.EntityArmorStand;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.MovingObjectPosition.MovingObjectType;
 import net.minecraft.util.Vec3;
-import net.minecraftforge.client.event.RenderTickEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
@@ -959,8 +958,8 @@ public final class ModuleAimAssist extends Module {
 
     /** Vape onPreRenderTick: apply the accumulated synthetic mouse pixels, snapping straight at the snap point. */
     @SubscribeEvent
-    public void onRenderTick(RenderTickEvent event) {
-        if (event.phase != RenderTickEvent.Phase.START || !isEnabled() || !mode.is(AimMode.ADAPTIVE)) return;
+    public void onRenderTick(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.START || !isEnabled() || !mode.is(AimMode.ADAPTIVE)) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || target == null || mc.thePlayer == null) return;
         boolean yawSnapEnabled = horizontalSpeed.intValue() > 20;

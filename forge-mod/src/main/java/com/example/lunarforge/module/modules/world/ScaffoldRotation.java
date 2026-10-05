@@ -77,6 +77,8 @@ final class ScaffoldRotation {
 
     boolean shouldRetain() { return retainAfterCompletion; }
 
+    void setRetainAfterCompletion(boolean value) { retainAfterCompletion = value; }
+
     /** ScaffoldPointRotationController: one-time speed initialisation once the gate opens. */
     void initSpeedOnce(float value) {
         if (!speedInitialized) {

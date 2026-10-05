@@ -47,7 +47,7 @@ final class GodBridgeMode {
     private double[] placePos;
     private float[] targetRotation;
     private ItemStack heldBlock;
-    private final ArrayList<Long> placementHistory = new ArrayList<Long>();
+    private final ArrayList<Integer> placementHistory = new ArrayList<Integer>();
     private WalkTask movementTask;
 
     GodBridgeMode(ModuleScaffold scaffold, NumberActivation activationBlocks) {
@@ -665,7 +665,7 @@ final class GodBridgeMode {
     // ===== placement look / history =====
 
     private boolean isLookingAtPlacement(Minecraft mc) {
-        if (mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != net.minecraft.util.MovingObjectType.BLOCK) {
+        if (mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != net.minecraft.util.MovingObjectPosition.MovingObjectType.BLOCK) {
             return false;
         }
         int side = mc.objectMouseOver.sideHit.getIndex();
@@ -688,7 +688,7 @@ final class GodBridgeMode {
 
     private long sumPlacementHistory() {
         long total = 0;
-        for (Long value : placementHistory) total += value;
+        for (Integer value : placementHistory) total += value;
         return total;
     }
 
