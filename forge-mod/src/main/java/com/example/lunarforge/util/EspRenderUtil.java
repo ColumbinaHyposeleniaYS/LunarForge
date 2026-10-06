@@ -82,12 +82,12 @@ public final class EspRenderUtil {
     }
 
     public static float partialTicks(RenderWorldLastEvent event) {
-        return event.getPartialTicks();
+        return event.partialTicks;
     }
 
     /** Interpolated entity position minus the camera position (RenderWorldLastEvent space). */
     public static double[] cameraRelative(Entity entity, RenderWorldLastEvent event) {
-        float t = event.getPartialTicks();
+        float t = event.partialTicks;
         RenderManager rm = mc().getRenderManager();
         return new double[]{
                 lerpDouble(entity.posX, entity.lastTickPosX, t) - rm.viewerPosX,

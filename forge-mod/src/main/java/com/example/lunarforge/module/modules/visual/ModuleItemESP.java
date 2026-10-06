@@ -117,7 +117,7 @@ public final class ModuleItemESP extends Module {
             if (stack == null || stack.stackSize <= 0) continue;
             int itemId = Item.getIdFromItem(stack.getItem());
             if (!shouldHighlight(itemId)) continue;
-            float t = event.getPartialTicks();
+            float t = event.partialTicks;
             ItemData data = new ItemData(itemId,
                     EspRenderUtil.lerpDouble(entityItem.posX, entityItem.lastTickPosX, t),
                     EspRenderUtil.lerpDouble(entityItem.posY, entityItem.lastTickPosY, t),
