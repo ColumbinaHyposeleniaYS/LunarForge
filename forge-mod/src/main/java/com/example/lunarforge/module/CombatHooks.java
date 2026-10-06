@@ -8,6 +8,7 @@ import com.example.lunarforge.module.modules.hud.ModuleReachDisplay;
 import com.example.lunarforge.util.CombatTimingTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
+import net.minecraft.network.play.server.S0BPacketAnimation;
 import net.minecraft.network.play.server.S19PacketEntityStatus;
 import net.minecraft.network.play.server.S12PacketEntityVelocity;
 
@@ -28,6 +29,18 @@ public final class CombatHooks {
         Module combo = ModuleManager.get("combo"), reach = ModuleManager.get("reach_display");
         if (combo instanceof ModuleCombo) ((ModuleCombo)combo).status(entity, packet.getOpCode());
         if (reach instanceof ModuleReachDisplay) ((ModuleReachDisplay)reach).status(entity, packet.getOpCode());
+    }
+
+    /**
+     * Injected at the head of NetHandlerPlayClient.handleAnimation (after its
+     * thread check). Observation only: PredictV2 records opponents' arm swings
+     * to predict incoming hits. Never cancels anything.
+     */
+    public static void animation(S0BPacketAnimation packet) {
+        Module blockHitMode = ModuleManager.get("block_hit_mode");
+        if (blockHitMode instanceof ModuleBlockHitMode) {
+            ((ModuleBlockHitMode) blockHitMode).onEntityAnimation(packet);
+        }
     }
 
     /**

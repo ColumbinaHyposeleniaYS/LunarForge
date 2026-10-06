@@ -111,6 +111,8 @@ public final class PortHooksTransformer implements IClassTransformer {
                     && m.desc.equals("(Lnet/minecraft/network/play/server/S2EPacketCloseWindow;)V")) count += closeWindow(m);
             if (net && m.desc.equals("(Lnet/minecraft/network/play/server/S12PacketEntityVelocity;)V")
                     && callsCheckThread(m)) count += velocityHook(m);
+            if (net && m.desc.equals("(Lnet/minecraft/network/play/server/S0BPacketAnimation;)V")
+                    && callsCheckThread(m)) count += animationHook(m);
             if (netManager && RenderHooksTransformer.named(m, "sendPacket", "func_179290_a")
                     && m.desc.equals("(Lnet/minecraft/network/Packet;)V")) count += sendPacketHook(m);
         }
@@ -313,6 +315,32 @@ public final class PortHooksTransformer implements IClassTransformer {
         hook.add(new InsnNode(Opcodes.RETURN));
         hook.add(vanilla);
         hook.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+        if (after != null) m.instructions.insert(after, hook); else m.instructions.insert(hook);
+        return 1;
+    }
+
+    /**
+     * handleAnimation: right after PacketThreadUtil.checkThreadAndEnqueue
+     * (only reached on the main thread) hand every entity animation packet to
+     * CombatHooks.animation. Observation only - the vanilla handling always
+     * runs afterwards (PredictV2 uses opponents' arm swings to predict
+     * incoming hits).
+     */
+    private static int animationHook(MethodNode m) {
+        AbstractInsnNode after = null;
+        for (AbstractInsnNode insn : m.instructions.toArray()) {
+            if (insn instanceof MethodInsnNode) {
+                String name = ((MethodInsnNode) insn).name;
+                if (name.equals("checkThreadAndEnqueue") || name.equals("func_180031_a")) {
+                    after = insn;
+                    break;
+                }
+            }
+        }
+        InsnList hook = new InsnList();
+        hook.add(new VarInsnNode(Opcodes.ALOAD, 1));
+        hook.add(RenderHooksTransformer.invoke("com/example/lunarforge/module/CombatHooks", "animation",
+                "(Lnet/minecraft/network/play/server/S0BPacketAnimation;)V"));
         if (after != null) m.instructions.insert(after, hook); else m.instructions.insert(hook);
         return 1;
     }

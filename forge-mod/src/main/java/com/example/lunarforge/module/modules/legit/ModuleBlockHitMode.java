@@ -11,15 +11,22 @@ import com.example.lunarforge.util.CombatTimingTracker;
 import com.example.lunarforge.util.GameplayUtil;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Random;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemAxe;
+import net.minecraft.item.ItemSword;
+import net.minecraft.item.ItemStack;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.client.C00PacketKeepAlive;
 import net.minecraft.network.play.client.C07PacketPlayerDigging;
+import net.minecraft.network.play.server.S0BPacketAnimation;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
@@ -53,6 +60,13 @@ import org.lwjgl.opengl.Display;
  * re-blocks after the configured stop ticks. Auto blocks for you after
  * an attack using one of four timings (Delay / HurtTime / Sag / Smart)
  * with chance, smart and range gates.
+ * PredictV2 (own addition, not from Vape or Leader): predicts an opponent's
+ * hit and pre-blocks it. The injected handleAnimation feeds every opponent
+ * arm swing into the module; a block is armed only under the conservative
+ * three-condition rule (fresh swing + own invulnerability window + threat
+ * in reach, inside the front cone, aiming back, sword/axe in hand), then
+ * after a small random delay the use key is held for a bounded window and
+ * released early once the damage lands.
  *
  * Vape's SubModule per-mode settings became mode-conditional entries
  * (hideIf), its RandomValue ranges became Min/Max setting pairs, and its
@@ -62,7 +76,7 @@ import org.lwjgl.opengl.Display;
 public final class ModuleBlockHitMode extends Module {
 
     public enum HitMode implements ChoiceSetting.Option {
-        MANUAL("Manual"), PREDICT("Predict"), AUTO("Auto"), LAG("Lag"), LEGIT("Legit");
+        MANUAL("Manual"), PREDICT("Predict"), AUTO("Auto"), LAG("Lag"), LEGIT("Legit"), PREDICT_V2("PredictV2");
 
         private final String label;
 
@@ -140,6 +154,19 @@ public final class ModuleBlockHitMode extends Module {
     private final BoolSetting legitAutoBlockRange = bool("legitAutoBlockRange", true).label(() -> "AutoBlock Range");
     private final NumberSetting legitRange = decimal("legitRange", 3.0F, 1.0F, 4.0F).label(() -> "Range");
 
+    // ===== PredictV2 (opponent-hit prediction) =====
+    private final NumberSetting predict2HurtWindow = integer("predict2HurtWindow", 10, 1, 20).label(() -> "Hurt Window (ticks)");
+    private final NumberSetting predict2Reach = decimal("predict2Reach", 3.2F, 1.0F, 4.0F).label(() -> "Max Reach");
+    private final NumberSetting predict2Chance = integer("predict2Chance", 65, 0, 100).label(() -> "Trigger Chance %");
+    private final NumberSetting predict2DelayMin = integer("predict2DelayMin", 0, 0, 5).label(() -> "Delay Min (ticks)");
+    private final NumberSetting predict2DelayMax = integer("predict2DelayMax", 1, 0, 5).label(() -> "Delay Max (ticks)");
+    private final NumberSetting predict2MinHold = integer("predict2MinHold", 1, 1, 10).label(() -> "Min Hold (ticks)");
+    private final NumberSetting predict2MaxHold = integer("predict2MaxHold", 8, 1, 20).label(() -> "Max Hold (ticks)");
+    private final NumberSetting predict2Cooldown = decimal("predict2Cooldown", 1.5F, 0.0F, 10.0F).label(() -> "Cooldown (s)");
+    private final NumberSetting predict2Fov = integer("predict2Fov", 90, 30, 180).label(() -> "Front FOV");
+    private final NumberSetting predict2AimCone = integer("predict2AimCone", 45, 10, 90).label(() -> "Target Aim Cone");
+    private final BoolSetting predict2Debug = bool("predict2Debug", false).label(() -> "Debug Counter");
+
     // ===== Manual state =====
     private long manualReleaseTime;
 
@@ -187,6 +214,20 @@ public final class ModuleBlockHitMode extends Module {
     private LegitMode lastLegitMode;
     private HitMode lastTickedMode;
 
+    // ===== PredictV2 state =====
+    private static final int PV2_SWING_FRESH_TICKS = 3;
+    private static final int PV2_SWING_MAP_LIMIT = 128;
+    private final HashMap<Integer, Integer> pv2SwingTicks = new HashMap<Integer, Integer>();
+    private int pv2TickCounter;
+    private int pv2DelayLeft;
+    private int pv2HoldTicks;
+    private boolean pv2DamageSeen;
+    private long pv2LastTrigger;
+    private int pv2RolledSwingKey;
+    private boolean pv2RollPassed;
+    private int pv2BlockedCount;
+    private int pv2WhiffCount;
+
     // ===== shared block state =====
     private boolean blocking;
     private boolean useKeyForced;
@@ -215,6 +256,9 @@ public final class ModuleBlockHitMode extends Module {
                 g.add(legitMinHurtTime, legitMaxHurtTime).hideIf(() -> !legitAutoBlockTime.is(LegitAutoBlockTime.HURT_TIME));
                 g.add(legitOnFirstHit, legitSmartBlockTicks, legitReleaseAfterHit, legitSmartBlockHurtTime).hideIf(() -> !legitAutoBlockTime.is(LegitAutoBlockTime.SMART));
             }).hideIf(() -> !mode.is(HitMode.LEGIT) || !legitMode.is(LegitMode.AUTO));
+            s.group(predict2HurtWindow, g -> g.add(predict2Reach, predict2Chance, predict2DelayMin, predict2DelayMax,
+                    predict2MinHold, predict2MaxHold, predict2Cooldown, predict2Fov, predict2AimCone, predict2Debug))
+                    .hideIf(() -> !mode.is(HitMode.PREDICT_V2));
         });
     }
 
@@ -259,6 +303,14 @@ public final class ModuleBlockHitMode extends Module {
         legitTarget = null;
         lastLegitMode = null;
         lastTickedMode = null;
+        pv2SwingTicks.clear();
+        pv2TickCounter = 0;
+        pv2DelayLeft = 0;
+        pv2HoldTicks = 0;
+        pv2DamageSeen = false;
+        pv2LastTrigger = 0L;
+        pv2RolledSwingKey = 0;
+        pv2RollPassed = false;
     }
 
     // ===== helpers =====
@@ -354,6 +406,12 @@ public final class ModuleBlockHitMode extends Module {
                 legitGetBlockTicks = 0;
                 legitTarget = null;
                 lastLegitMode = null;
+                break;
+            case PREDICT_V2:
+                pv2DelayLeft = 0;
+                pv2HoldTicks = 0;
+                pv2DamageSeen = false;
+                pv2SwingTicks.clear();
                 break;
         }
     }
@@ -472,6 +530,9 @@ public final class ModuleBlockHitMode extends Module {
             case LEGIT:
                 onLegitTick(mc);
                 break;
+            case PREDICT_V2:
+                onPredictV2Tick(mc);
+                break;
         }
     }
 
@@ -492,12 +553,17 @@ public final class ModuleBlockHitMode extends Module {
     /** Packet-precise counterpart of Vape's onDamaged (hurt status of the local player). */
     public void onSelfDamaged() {
         Minecraft mc = Minecraft.getMinecraft();
-        if (!isEnabled() || mc.thePlayer == null || !mode.is(HitMode.PREDICT)) return;
-        damageObserved = true;
-        holdTimerStarted = false;
-        holdUntil = 0L;
-        recordDamageInterval();
-        pendingDamageRelease = true;
+        if (!isEnabled() || mc.thePlayer == null) return;
+        if (mode.is(HitMode.PREDICT)) {
+            damageObserved = true;
+            holdTimerStarted = false;
+            holdUntil = 0L;
+            recordDamageInterval();
+            pendingDamageRelease = true;
+        }
+        if (mode.is(HitMode.PREDICT_V2) && blocking) {
+            pv2DamageSeen = true;
+        }
     }
 
     private void onPredictTick(Minecraft mc) {
@@ -609,6 +675,129 @@ public final class ModuleBlockHitMode extends Module {
         damageIntervalCount = 0;
         nextDamageIntervalIndex = 0;
         setBlocking(mc, false);
+    }
+
+    // ===== PredictV2 =====
+
+    /**
+     * Packet-precise opponent arm swings, fed by {@link com.example.lunarforge.module.CombatHooks}
+     * from the injected NetHandlerPlayClient.handleAnimation. Main thread only
+     * (the hook sits after the packet thread check).
+     */
+    public void onEntityAnimation(S0BPacketAnimation packet) {
+        if (!isEnabled() || !mode.is(HitMode.PREDICT_V2)) return;
+        if (packet.getAnimationType() != 0) return;
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer == null || mc.theWorld == null) return;
+        if (packet.getEntityID() == mc.thePlayer.getEntityId()) return;
+        if (pv2SwingTicks.size() > PV2_SWING_MAP_LIMIT) pv2SwingTicks.clear();
+        pv2SwingTicks.put(packet.getEntityID(), pv2TickCounter);
+    }
+
+    private void onPredictV2Tick(Minecraft mc) {
+        pv2TickCounter++;
+        if (mc.currentScreen != null) {
+            // Binding changes must not happen while a GUI is open (see the onDisable note).
+            pv2Reset(mc);
+            return;
+        }
+        if (blocking) {
+            onPredictV2HoldTick(mc);
+            return;
+        }
+        if (!GameplayUtil.isSword(mc.thePlayer.getHeldItem())) return;
+        EntityPlayer threat = findPredictV2Threat(mc);
+        if (threat == null) return;
+        // conservative gate 2: own invulnerability window (full damage applies while <= 10)
+        if (mc.thePlayer.hurtResistantTime > predict2HurtWindow.intValue()) return;
+        // conservative gate 1: a fresh arm swing from that threat
+        Integer swingTick = pv2SwingTicks.get(threat.getEntityId());
+        if (swingTick == null || pv2TickCounter - swingTick.intValue() > PV2_SWING_FRESH_TICKS) return;
+        // chance roll: decided once per observed swing, not per tick
+        int rollKey = threat.getEntityId() * 100000 + swingTick.intValue();
+        if (rollKey != pv2RolledSwingKey) {
+            pv2RolledSwingKey = rollKey;
+            pv2RollPassed = random.nextInt(100) < predict2Chance.intValue();
+            pv2DelayLeft = predict2RandomDelay();
+        }
+        if (!pv2RollPassed) return;
+        long cooldownMs = (long) (predict2Cooldown.value() * 1000.0D);
+        if (pv2LastTrigger > 0L && System.currentTimeMillis() - pv2LastTrigger < cooldownMs) return;
+        if (--pv2DelayLeft > 0) return;
+        pv2HoldTicks = 0;
+        pv2DamageSeen = false;
+        pv2LastTrigger = System.currentTimeMillis();
+        setBlocking(mc, true);
+    }
+
+    private void onPredictV2HoldTick(Minecraft mc) {
+        pv2HoldTicks++;
+        if (pv2HoldTicks < predict2MinHold.intValue()) return;
+        if (pv2DamageSeen) {
+            if (predict2Debug.on()) {
+                ++pv2BlockedCount;
+                mc.thePlayer.addChatMessage(new ChatComponentText(
+                        "\u00a77PredictV2: \u00a7fblocked " + pv2BlockedCount + " / whiffed " + pv2WhiffCount));
+            }
+            pv2Reset(mc);
+            return;
+        }
+        if (pv2HoldTicks >= predict2MaxHold.intValue()) {
+            if (predict2Debug.on()) {
+                ++pv2WhiffCount;
+                mc.thePlayer.addChatMessage(new ChatComponentText(
+                        "\u00a77PredictV2: \u00a7fblocked " + pv2BlockedCount + " / whiffed " + pv2WhiffCount));
+            }
+            pv2Reset(mc);
+        }
+    }
+
+    /**
+     * The nearest player threat passing every hard gate: inside reach, inside
+     * my front cone (vanilla blocking only covers the frontal hemisphere, so
+     * anything wider can never be blocked), aiming back at me and holding a
+     * sword or axe.
+     */
+    private EntityPlayer findPredictV2Threat(Minecraft mc) {
+        double reachSq = predict2Reach.value() * predict2Reach.value();
+        double halfFov = predict2Fov.intValue() / 2.0D;
+        Vec3 eyes = mc.thePlayer.getPositionEyes(1.0F);
+        Vec3 myLook = mc.thePlayer.getLook(1.0F);
+        EntityPlayer best = null;
+        double bestDistSq = Double.MAX_VALUE;
+        for (Object object : mc.theWorld.loadedEntityList) {
+            if (!(object instanceof EntityPlayer)) continue;
+            EntityPlayer player = (EntityPlayer) object;
+            if (player == mc.thePlayer || player.isDead || player.getHealth() <= 0.0F) continue;
+            double distSq = mc.thePlayer.getDistanceSqToEntity(player);
+            if (distSq > reachSq || distSq >= bestDistSq) continue;
+            Vec3 toTarget = new Vec3(player.posX - eyes.xCoord,
+                    player.posY + player.getEyeHeight() - eyes.yCoord, player.posZ - eyes.zCoord).normalize();
+            if (Math.toDegrees(Math.acos(MathHelper.clamp_double(myLook.dotProduct(toTarget), -1.0D, 1.0D))) > halfFov) continue;
+            Vec3 toMe = new Vec3(eyes.xCoord - player.posX,
+                    eyes.yCoord - (player.posY + player.getEyeHeight()), eyes.zCoord - player.posZ).normalize();
+            Vec3 theirLook = player.getLook(1.0F);
+            if (Math.toDegrees(Math.acos(MathHelper.clamp_double(theirLook.dotProduct(toMe), -1.0D, 1.0D))) > predict2AimCone.intValue()) continue;
+            ItemStack held = player.getHeldItem();
+            if (held == null || !(held.getItem() instanceof ItemSword || held.getItem() instanceof ItemAxe)) continue;
+            best = player;
+            bestDistSq = distSq;
+        }
+        return best;
+    }
+
+    private int predict2RandomDelay() {
+        int min = Math.min(predict2DelayMin.intValue(), predict2DelayMax.intValue());
+        int max = Math.max(predict2DelayMin.intValue(), predict2DelayMax.intValue());
+        return min + (max == min ? 0 : random.nextInt(max - min + 1));
+    }
+
+    /** Releases the block and clears the per-window state (the cooldown timestamp is kept). */
+    private void pv2Reset(Minecraft mc) {
+        setBlocking(mc, false);
+        pv2HoldTicks = 0;
+        pv2DamageSeen = false;
+        pv2DelayLeft = 0;
     }
 
     // ===== Auto =====
