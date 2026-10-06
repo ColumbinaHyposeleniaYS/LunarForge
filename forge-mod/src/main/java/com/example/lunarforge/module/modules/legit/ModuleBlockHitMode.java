@@ -586,7 +586,9 @@ public final class ModuleBlockHitMode extends Module {
     private boolean canPredict(Minecraft mc) {
         if (!isHoldingSword(mc)) return false;
         if (requireMouseDown.on() && !useButtonDown(mc)) return false;
-        return GameplayUtil.findTarget(mc, 5.0D, 45.0F) != null;
+        // Read the shared Angle/Distance settings (defaults 90/5.0 match the
+        // previously hardcoded 45.0F half-angle and 5.0D range).
+        return findTarget(mc) != null;
     }
 
     private void updateReactiveBlocking(Minecraft mc, int hurtResistantTime) {

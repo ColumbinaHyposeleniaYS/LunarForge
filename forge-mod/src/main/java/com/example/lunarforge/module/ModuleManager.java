@@ -23,6 +23,7 @@ import com.example.lunarforge.module.modules.legit.ModuleBlockHitMode;
 import com.example.lunarforge.module.modules.legit.ModuleEagle;
 import com.example.lunarforge.module.modules.legit.ModuleFastPlace;
 import com.example.lunarforge.module.modules.legit.ModuleInventoryClicker;
+import com.example.lunarforge.module.modules.legit.ModuleLegitTest;
 import com.example.lunarforge.module.modules.combat.ModuleAimAssist;
 import com.example.lunarforge.module.modules.combat.ModuleHitSelect;
 import com.example.lunarforge.module.modules.combat.ModuleJumpReset;
@@ -82,6 +83,7 @@ public final class ModuleManager {
         register(new ModuleAutoTool());
         register(new ModuleEagle());
         register(new ModuleBlockHitMode());
+        register(new ModuleLegitTest());
         register(new ModuleWTap());
         register(new ModuleKnockbackDelay());
         register(new ModuleAimAssist());
