@@ -29,28 +29,31 @@ import org.lwjgl.input.Mouse;
  * both click halves now live here under one "Auto Clicker" entry.
  *
  * - Attack clicking (left half): while the attack key is held (and the player is
- *   not using an item), left clicks fire at the configured CPS range through the
- *   Vape randomization engine. "Weapons Only" gates the half to weapons
- *   (swords/knockback items, plus tools with "Allow Tools") and "Don't Break
- *   Blocks" keeps it from mining blocks when no player is targeted. A physical
- *   left press pushes the synthetic cadence one delay back (Leader-Lite
- *   LeftClickMouseEvent precedent).
- * - Block hit clicking (right half): right clicks fire while a sword is held
- *   (Vape's right-click half of RightClicker, configured as a legit sword
- *   blockhit helper). "Require Auto Clicker" (default on) only lets the right
- *   half run while the attack half is actively clicking, so the module can not
- *   degenerate into a meaningless standalone right-click spam; turning it off
- *   restores free-running right clicks.
- * - Randomization (Vape ClickEngine.calculateNextClickDelay), shared by both
- *   halves (separate engine state each): Normal = plain 1000/cps from the
- *   range, Extra = Vape's legacy burst and fast/slow phase model, Extra+ =
+ *   not using an item), left clicks fire at the half's own CPS range and
+ *   randomization mode. "Weapons Only" gates the half to weapons (swords/knockback
+ *   items, plus tools with "Allow Tools") and "Don't Break Blocks" keeps it from
+ *   mining blocks when no player is targeted. A physical left press pushes the
+ *   synthetic cadence one delay back (Leader-Lite LeftClickMouseEvent precedent).
+ * - Block hit clicking (right half): right clicks fire at the half's own CPS range
+ *   and randomization mode. "Sword Only" (default on) keeps the legit sword
+ *   blockhit semantics; turning it off turns the half into a generic right-click
+ *   clicker. "Require Auto Clicker" (default on) only lets the right half run
+ *   while the attack half is actively clicking, so the module can not degenerate
+ *   into a meaningless standalone right-click spam; turning it off restores
+ *   free-running right clicks.
+ * - Randomization, one independent set per half (Vape
+ *   ClickEngine.calculateNextClickDelay): Normal = plain 1000/cps from the
+ *   half's range, Extra = Vape's legacy burst and fast/slow phase model, Extra+ =
  *   Vape's humanized timing state ({@link ClickerTiming}: drifting target,
- *   fatigue, bursts, click noise, pauses). Default Extra+.
+ *   fatigue, bursts, click noise, pauses). "Delay" ignores the CPS engine
+ *   entirely and clicks on a plain millisecond interval picked between the
+ *   half's "Delay Min" and "Delay Max" (equal values = a strictly fixed
+ *   interval). Both halves default to Extra+; delays default to 80-120 ms.
  * - Jitter (Vape ClickEngine.generateJitter/updateJitter/applyJitterRotation):
- *   a fresh random pixel offset (up to 7 px) per click, spread over the next
- *   few client ticks and applied through the same synthetic mouse mechanism as
- *   ModuleAimAssist (pixels * (sens*0.6+0.2)^3 * 8 via EntityPlayerSP.setAngles).
- *   Default off.
+ *   the one setting shared by both halves: a fresh random pixel offset (up to
+ *   7 px) per click, spread over the next few client ticks and applied through
+ *   the same synthetic mouse mechanism as ModuleAimAssist
+ *   (pixels * (sens*0.6+0.2)^3 * 8 via EntityPlayerSP.setAngles). Default off.
  *
  * The right half clears rightClickDelayTimer like FastPlace because vanilla
  * otherwise caps right clicks at one action per 4 ticks. Both halves are
@@ -61,7 +64,7 @@ import org.lwjgl.input.Mouse;
 public final class ModuleAutoClicker extends Module {
 
     public enum RandomizationMode implements ChoiceSetting.Option {
-        NORMAL("Normal"), EXTRA("Extra"), EXTRA_PLUS("Extra+");
+        NORMAL("Normal"), EXTRA("Extra"), EXTRA_PLUS("Extra+"), DELAY("Delay");
 
         private final String label;
 
@@ -74,25 +77,40 @@ public final class ModuleAutoClicker extends Module {
             Fields.find(Minecraft.class, "rightClickDelayTimer", "field_71467_ac");
     private static final float JITTER_MAX_OFFSET = 7.0F;
 
-    // ===== settings =====
+    // ===== left half (attack) settings =====
     private final NumberSetting cpsMin = integer("cpsMin", 8, 1, 20).label(() -> "Min CPS");
     private final NumberSetting cpsMax = integer("cpsMax", 12, 1, 20).label(() -> "Max CPS");
     private final ChoiceSetting<RandomizationMode> randomization =
             choice("randomization", RandomizationMode.EXTRA_PLUS).label(() -> "Randomization");
-    private final BoolSetting jitter = bool("jitter", false).label(() -> "Jitter");
+    private final NumberSetting delayMin = integer("delayMin", 80, 1, 2000).label(() -> "Delay Min (ms)");
+    private final NumberSetting delayMax = integer("delayMax", 120, 1, 2000).label(() -> "Delay Max (ms)");
     private final BoolSetting weaponsOnly = bool("weaponsOnly", true).label(() -> "Weapons Only");
     private final BoolSetting allowTools = bool("allowTools", false).label(() -> "Allow Tools");
     private final BoolSetting breakBlocks = bool("breakBlocks", true).label(() -> "Don't Break Blocks");
     private final NumberSetting range = decimal("range", 3.0f, 3.0f, 8.0f).label(() -> "Player Range");
     private final NumberSetting hitBoxVertical = decimal("hitBoxVertical", 0.1f, 0.0f, 1.0f).label(() -> "Hit Box Vertical");
     private final NumberSetting hitBoxHorizontal = decimal("hitBoxHorizontal", 0.2f, 0.0f, 1.0f).label(() -> "Hit Box Horizontal");
+
+    // ===== right half (block hit) settings =====
     private final BoolSetting blockHit = bool("blockHit", true).label(() -> "Block Hit");
+    private final NumberSetting rCpsMin = integer("rCpsMin", 8, 1, 20).label(() -> "Min CPS");
+    private final NumberSetting rCpsMax = integer("rCpsMax", 12, 1, 20).label(() -> "Max CPS");
+    private final ChoiceSetting<RandomizationMode> rRandomization =
+            choice("rRandomization", RandomizationMode.EXTRA_PLUS).label(() -> "Randomization");
+    private final NumberSetting rDelayMin = integer("rDelayMin", 80, 1, 2000).label(() -> "Delay Min (ms)");
+    private final NumberSetting rDelayMax = integer("rDelayMax", 120, 1, 2000).label(() -> "Delay Max (ms)");
+    private final BoolSetting swordOnly = bool("swordOnly", true).label(() -> "Sword Only");
     private final BoolSetting requireAutoClicker =
             bool("requireAutoClicker", true).label(() -> "Require Auto Clicker");
 
-    // ===== per-half engine state =====
-    private final TimingEngine attackEngine = new TimingEngine();
-    private final TimingEngine blockHitEngine = new TimingEngine();
+    // ===== shared settings =====
+    private final BoolSetting jitter = bool("jitter", false).label(() -> "Jitter");
+
+    // ===== per-half engine state (each half reads its own settings) =====
+    private final TimingEngine attackEngine =
+            new TimingEngine(cpsMin, cpsMax, randomization, delayMin, delayMax);
+    private final TimingEngine blockHitEngine =
+            new TimingEngine(rCpsMin, rCpsMax, rRandomization, rDelayMin, rDelayMax);
     private long nextAttackAt;
     private boolean attackRestorePending;
     private long nextBlockHitAt;
@@ -112,15 +130,24 @@ public final class ModuleAutoClicker extends Module {
     }
 
     @Override protected void layout(Page page) {
-        page.section("generalOptions", s -> {
+        page.section("leftClicker", s -> {
             s.add(cpsMin, cpsMax);
-            s.add(randomization, jitter);
+            s.add(randomization);
+            s.add(delayMin, delayMax).hideIf(() -> !randomization.is(RandomizationMode.DELAY));
             s.group(weaponsOnly, g -> {
                 g.add(allowTools);
                 g.group(breakBlocks, b -> b.add(range, hitBoxVertical, hitBoxHorizontal));
             });
-            s.group(blockHit, b -> b.add(requireAutoClicker));
         });
+        page.section("rightClicker", s -> {
+            s.group(blockHit, b -> {
+                b.add(rCpsMin, rCpsMax);
+                b.add(rRandomization);
+                b.add(rDelayMin, rDelayMax).hideIf(() -> !rRandomization.is(RandomizationMode.DELAY));
+                b.add(swordOnly, requireAutoClicker);
+            });
+        });
+        page.section("generalOptions", s -> s.add(jitter));
     }
 
     @Override protected void onDisable() {
@@ -184,9 +211,9 @@ public final class ModuleAutoClicker extends Module {
         return false;
     }
 
-    /** Block-hit half gate: sword held, and when "Require Auto Clicker" is on the attack half must be actively clicking. */
+    /** Block-hit half gate: optional sword filter, and when "Require Auto Clicker" is on the attack half must be actively clicking. */
     private boolean canBlockHit(Minecraft mc) {
-        if (!GameplayUtil.isSword(mc.thePlayer.getHeldItem())) return false;
+        if (swordOnly.on() && !GameplayUtil.isSword(mc.thePlayer.getHeldItem())) return false;
         return !requireAutoClicker.on() || attackHalfActive(mc);
     }
 
@@ -292,9 +319,19 @@ public final class ModuleAutoClicker extends Module {
 
     // ===== randomization engine (Vape ClickEngine.calculateNextClickDelay) =====
 
+    /**
+     * One clicker half's timing state. Each half is constructed with its own
+     * settings, so the left (attack) and right (block hit) halves run fully
+     * independent CPS ranges, randomization modes and delay intervals.
+     */
     private final class TimingEngine {
         private final Random random = new Random();
         private final ClickerTiming timing = new ClickerTiming();
+        private final NumberSetting minCps;
+        private final NumberSetting maxCps;
+        private final ChoiceSetting<RandomizationMode> mode;
+        private final NumberSetting minDelay;
+        private final NumberSetting maxDelay;
 
         // Extra state (Vape calculateLegacyRandomizedDelay)
         private boolean burstActive;
@@ -307,17 +344,36 @@ public final class ModuleAutoClicker extends Module {
         private int configuredFastPhaseLength;
         private long lastClickDelayMillis;
 
+        TimingEngine(NumberSetting minCps, NumberSetting maxCps,
+                ChoiceSetting<RandomizationMode> mode,
+                NumberSetting minDelay, NumberSetting maxDelay) {
+            this.minCps = minCps;
+            this.maxCps = maxCps;
+            this.mode = mode;
+            this.minDelay = minDelay;
+            this.maxDelay = maxDelay;
+        }
+
         long nextDelay() {
-            int min = cpsMin.intValue();
-            int max = Math.max(cpsMax.intValue(), min);
+            // "Delay" randomization: a plain millisecond interval between the
+            // half's Delay Min and Delay Max, ignoring the CPS engine entirely.
+            // Equal bounds degenerate to a strictly fixed interval.
+            if (mode.is(RandomizationMode.DELAY)) {
+                int lo = Math.max(1, minDelay.intValue());
+                int hi = Math.max(maxDelay.intValue(), lo);
+                return lo + random.nextInt(hi - lo + 1);
+            }
+
+            int min = minCps.intValue();
+            int max = Math.max(maxCps.intValue(), min);
             int size = max - min;
             int selectedCps = size <= 0 ? min : random.nextInt(size) + min + 1;
 
-            if (randomization.is(RandomizationMode.NORMAL)) {
+            if (mode.is(RandomizationMode.NORMAL)) {
                 return 1000L / selectedCps;
             }
             if (selectedCps == 0) selectedCps = 1;
-            if (randomization.is(RandomizationMode.EXTRA)) {
+            if (mode.is(RandomizationMode.EXTRA)) {
                 return legacyRandomizedDelay(selectedCps);
             }
             timing.configureCpsRange(min, max);

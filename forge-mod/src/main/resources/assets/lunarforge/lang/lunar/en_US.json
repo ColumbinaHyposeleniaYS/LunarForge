@@ -2938,6 +2938,8 @@
       "previewOptions": "Preview Options",
       "turboOptions": "Turbo Engine Options",
       "generalOptions": "General",
+      "leftClicker": "Left Clicker",
+      "rightClicker": "Right Clicker",
       "particleOptions": "Particles",
       "extraOptions": "Extra",
       "otherOptions": "Other",
