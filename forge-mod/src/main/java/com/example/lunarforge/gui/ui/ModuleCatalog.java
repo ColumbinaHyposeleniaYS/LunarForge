@@ -26,8 +26,9 @@ public final class ModuleCatalog {
         "pack_display", "menu_blur", "motion_blur", "color_saturation",
         "hit_color", "shiny_pots", "glint_colorizer", "mob_size", "hitbox", "block_outline", "height_limit", "light_overlay", "particle_changer", "saturation", "titles", "action_bar", "scrollable_tooltips",
         "potion_effects", "stopwatch", "chat", "nick_hider", "quickplay", "crosshair", "tab", "hypixel_mod", "hypixel_bedwars", "3d_skins",
-        "auto_clicker", "fast_place", "inventory_clicker", "auto_tool", "eagle", "block_hit_mode", "legit_test",
-        "w_tap", "knockback_delay", "aim_assist", "hit_select", "jump_reset");
+        "auto_clicker", "fast_place", "inventory_clicker", "auto_tool", "eagle", "block_hit_mode",
+        "w_tap", "knockback_delay", "aim_assist", "hit_select", "jump_reset",
+        "item_esp", "chest_esp", "esp", "name_tags", "bed_esp", "view_clip", "module_list");
 
     public static boolean defaultEnabled(String id) {
         com.example.lunarforge.module.Module m = com.example.lunarforge.module.ModuleManager.get(id);
@@ -50,6 +51,12 @@ public final class ModuleCatalog {
     public static Module find(String id) {
         for (Module m : ALL) if (m.id.equals(id)) return m;
         throw new IllegalArgumentException("Unknown module: " + id);
+    }
+
+    /** Like {@link #find(String)} but returns null instead of throwing. */
+    public static Module findOrNull(String id) {
+        for (Module m : ALL) if (m.id.equals(id)) return m;
+        return null;
     }
     private ModuleCatalog() {}
 }

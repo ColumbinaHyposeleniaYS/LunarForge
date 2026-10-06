@@ -121,6 +121,25 @@ public final class ClickerTiming {
         }
     }
 
+    /** Full state reset - back to fresh-model behavior while keeping this instance's seed. */
+    public void reset() {
+        this.currentCps = 0.0;
+        this.previousDelayMillis = 0L;
+        this.targetCps = 0.0;
+        this.initialized = false;
+        this.targetOffset = 0.0;
+        this.pauseChanceOffset = 0.0;
+        this.repeatDelayChance = 0.06;
+        this.minimumCps = 0.0;
+        this.maximumCps = 0.0;
+        this.nextDriftTimestamp = 0L;
+        this.fatigue = 0.0;
+        this.clicksSinceVariation = 0;
+        this.burstClicksRemaining = 0;
+        this.lastClickTimestamp = 0L;
+        this.nextTargetTimestamp = 0L;
+    }
+
     private static double clamp(double value, double minimum, double maximum) {
         return Math.max(minimum, Math.min(maximum, value));
     }

@@ -65,9 +65,15 @@ inventory_clicker	Inventory Clicker	LEGIT	shulker_preview
 auto_tool	Auto Tool	LEGIT	tier_tagger
 eagle	Eagle	LEGIT	toggle_sneak
 block_hit_mode	Block Hit Mode	LEGIT	block_outline
-legit_test	LegitTest	LEGIT	cps
 w_tap	WTap	COMBAT	cps
 knockback_delay	Knockback Delay	COMBAT	pvp_info
 aim_assist	Aim Assist	COMBAT	crosshair
 jump_reset	Jump Reset	COMBAT	keystrokes
 hit_select	Hit Select	COMBAT	crosshair
+item_esp	Item ESP	MECHANIC	item_tracker
+chest_esp	Chest ESP	MECHANIC	shulker_preview
+esp	ESP	MECHANIC	team_view
+name_tags	Name Tags	MECHANIC	nametag
+bed_esp	Bed ESP	MECHANIC	hypixel_bedwars
+view_clip	View Clip	MECHANIC	dof
+module_list	Module List	HUD	text

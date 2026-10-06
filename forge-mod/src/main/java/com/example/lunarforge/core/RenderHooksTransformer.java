@@ -56,7 +56,8 @@ public final class RenderHooksTransformer implements IClassTransformer {
         boolean itemRenderer = "net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer".equals(transformedName);
         boolean dispatcher = "net.minecraft.client.renderer.BlockRendererDispatcher".equals(transformedName);
         boolean shapes = "net.minecraft.client.renderer.BlockModelShapes".equals(transformedName);
-        if (!worldClass && !player && !skull && !customHead && !itemRenderer && !dispatcher && !shapes && !render && !renderer && !screen && !living && !armor && !item && !manager && !global && !particle && !effects && !tooltip && !ingame) return bytes;
+        boolean visGraph = "net.minecraft.client.renderer.chunk.VisGraph".equals(transformedName);
+        if (!worldClass && !player && !skull && !customHead && !itemRenderer && !dispatcher && !shapes && !render && !renderer && !screen && !living && !armor && !item && !manager && !global && !particle && !effects && !tooltip && !ingame && !visGraph) return bytes;
         ClassNode node = new ClassNode();
         new ClassReader(bytes).accept(node, 0);
         int count = 0;
@@ -65,6 +66,9 @@ public final class RenderHooksTransformer implements IClassTransformer {
         if (effects) for (org.objectweb.asm.tree.FieldNode f : node.fields) if (f.desc.equals("Lnet/minecraft/world/World;")) world = f.name;
         for (MethodNode m : node.methods) {
             if (renderer && named(m, "updateCameraAndRender", "func_181560_a") && m.desc.equals("(FJ)V")) count += postProcess(m);
+            if (visGraph && m.name.equals("func_178606_a") && m.desc.equals("(Lnet/minecraft/util/BlockPos;)V")) count += visGraphSkip(m);
+            if (renderer && named(m, "orientCamera", "func_78467_g") && m.desc.equals("(F)V")) count += viewClipDistance(m);
+            if (renderer && named(m, "setupFog", "func_78473_a") && m.desc.equals("(IF)V")) count += viewClipFog(m);
             if (screen && named(m, "drawWorldBackground", "func_146270_b") && m.desc.equals("(I)V")) count += worldBackground(m);
             if (living && named(m, "setBrightness", "func_177092_a") && m.desc.equals("(Lnet/minecraft/entity/EntityLivingBase;FZ)Z")) count += hitColor(m);
             if (living && named(m, "doRender", "func_76986_a") && m.desc.equals("(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V")) {
@@ -469,6 +473,48 @@ public final class RenderHooksTransformer implements IClassTransformer {
         condition.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
         m.instructions.insert(condition);
         return 1;
+    }
+
+    static final String VIEWCLIP = "com/example/lunarforge/module/render/ViewClipHooks";
+    static final String VEC3 = "net/minecraft/util/Vec3";
+    static final String MATERIAL = "net/minecraft/block/material/Material";
+
+    /** ViewClip: empty the chunk visibility graph so back faces never cull. */
+    private static int visGraphSkip(MethodNode m) {
+        InsnList cond = new InsnList();
+        cond.add(invoke(VIEWCLIP, "skipVisGraph", "()Z"));
+        return returnIf(m, cond);
+    }
+
+    /** ViewClip: replace the third-person camera clip raycast (Vec3.distanceTo) with the fixed distance. */
+    private static int viewClipDistance(MethodNode m) {
+        int n = 0;
+        for (AbstractInsnNode insn : m.instructions.toArray()) {
+            if (!(insn instanceof MethodInsnNode)) continue;
+            MethodInsnNode call = (MethodInsnNode)insn;
+            if (call.getOpcode() == Opcodes.INVOKEVIRTUAL && call.owner.equals(VEC3)
+                    && named(call, "distanceTo", "func_72438_d") && call.desc.equals("(L" + VEC3 + ";)D")) {
+                m.instructions.set(insn, invoke(VIEWCLIP, "cameraDistance", "(L" + VEC3 + ";L" + VEC3 + ";)D"));
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** ViewClip: replace Block.getMaterial in setupFog so water/lava fog never applies. */
+    private static int viewClipFog(MethodNode m) {
+        int n = 0;
+        for (AbstractInsnNode insn : m.instructions.toArray()) {
+            if (!(insn instanceof MethodInsnNode)) continue;
+            MethodInsnNode call = (MethodInsnNode)insn;
+            if (call.getOpcode() == Opcodes.INVOKEVIRTUAL && call.owner.equals("net/minecraft/block/Block")
+                    && named(call, "getMaterial", "func_149688_o") && call.desc.equals("()L" + MATERIAL + ";")) {
+                m.instructions.set(insn, invoke(VIEWCLIP, "fogMaterial",
+                        "(Lnet/minecraft/block/Block;)L" + MATERIAL + ";"));
+                n++;
+            }
+        }
+        return n;
     }
 
     static int around(MethodNode m, MethodInsnNode head, String owner, String tail) {

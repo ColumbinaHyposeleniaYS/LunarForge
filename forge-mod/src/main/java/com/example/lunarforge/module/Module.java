@@ -34,6 +34,9 @@ public abstract class Module {
 
     protected boolean keybindAllowed = true;
 
+    /** Every module has a Hidden switch; on = excluded from the Module List HUD overlay. */
+    private final BoolSetting hidden = add(new BoolSetting("hidden", false).label(() -> "Hidden"));
+
     protected Module(String id, boolean defaultEnabled) {
         this.id = id;
         this.defaultEnabled = defaultEnabled;
@@ -53,6 +56,9 @@ public abstract class Module {
     }
 
     public boolean defaultEnabled() { return defaultEnabled; }
+
+    /** Hidden switch: on = this module is not shown in the Module List HUD overlay. */
+    public boolean isHidden() { return hidden.on(); }
 
     protected void onEnable() {}
     protected void onDisable() {}
@@ -118,6 +124,7 @@ public abstract class Module {
         }
         boolean hud = !huds.isEmpty();
         for (Module child : children) hud |= !child.huds.isEmpty();
+        page.addFirst(hidden);
         return new OptionCatalog.Page(hud, keybindAllowed && parent == null, page.nodes());
     }
 

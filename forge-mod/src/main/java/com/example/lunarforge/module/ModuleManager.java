@@ -23,7 +23,6 @@ import com.example.lunarforge.module.modules.legit.ModuleBlockHitMode;
 import com.example.lunarforge.module.modules.legit.ModuleEagle;
 import com.example.lunarforge.module.modules.legit.ModuleFastPlace;
 import com.example.lunarforge.module.modules.legit.ModuleInventoryClicker;
-import com.example.lunarforge.module.modules.legit.ModuleLegitTest;
 import com.example.lunarforge.module.modules.combat.ModuleAimAssist;
 import com.example.lunarforge.module.modules.combat.ModuleHitSelect;
 import com.example.lunarforge.module.modules.combat.ModuleJumpReset;
@@ -83,7 +82,6 @@ public final class ModuleManager {
         register(new ModuleAutoTool());
         register(new ModuleEagle());
         register(new ModuleBlockHitMode());
-        register(new ModuleLegitTest());
         register(new ModuleWTap());
         register(new ModuleKnockbackDelay());
         register(new ModuleAimAssist());
@@ -133,6 +131,13 @@ public final class ModuleManager {
         register(new com.example.lunarforge.module.modules.server.ModuleHypixelMods());
         register(new com.example.lunarforge.module.modules.server.ModuleHypixelBedwars());
         register(new com.example.lunarforge.module.modules.visual.Module3dSkins());
+        register(new com.example.lunarforge.module.modules.hud.ModuleModuleList());
+        register(new com.example.lunarforge.module.modules.visual.ModuleItemESP());
+        register(new com.example.lunarforge.module.modules.visual.ModuleChestESP());
+        register(new com.example.lunarforge.module.modules.visual.ModuleESP());
+        register(new com.example.lunarforge.module.modules.visual.ModuleNameTags());
+        register(new com.example.lunarforge.module.modules.visual.ModuleBedESP());
+        register(new com.example.lunarforge.module.modules.visual.ModuleViewClip());
         OptionCatalog.buttons = new java.util.function.BiConsumer<String, String>() {
             @Override public void accept(String id, String key) {
                 Module m = BY_KEY.get(id.toLowerCase(Locale.ROOT));
